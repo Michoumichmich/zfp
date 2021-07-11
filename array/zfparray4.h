@@ -6,6 +6,7 @@
 #include <iterator>
 #include "zfparray.h"
 #include "zfpcodec.h"
+#include "zfpindex.h"
 #include "zfp/cache4.h"
 #include "zfp/store4.h"
 #include "zfp/handle4.h"
@@ -17,13 +18,20 @@
 namespace zfp {
 
 // compressed 3D array of scalars
-template < typename Scalar, class Codec = zfp::zfp_codec<Scalar, 4> >
+template <
+  typename Scalar,
+  class Codec = zfp::codec::zfp4<Scalar>,
+  class Index = zfp::index::implicit
+>
 class array4 : public array {
 public:
   // types utilized by nested classes
   typedef array4 container_type;
   typedef Scalar value_type;
   typedef Codec codec_type;
+  typedef Index index_type;
+  typedef BlockStore4<value_type, codec_type, index_type> store_type;
+  typedef BlockCache4<value_type, store_type> cache_type;
   typedef typename Codec::header header;
 
   // accessor classes
@@ -54,7 +62,7 @@ public:
   // cache_size bytes of cache, and optionally initialized from flat array p
   array4(size_t nx, size_t ny, size_t nz, size_t nw, double rate, const value_type* p = 0, size_t cache_size = 0) :
     array(4, Codec::type),
-    store(nx, ny, nz, nw, rate),
+    store(nx, ny, nz, nw, zfp_config_rate(rate, true)),
     cache(store, cache_size)
   {
     this->nx = nx;
@@ -68,7 +76,7 @@ public:
   // constructor, from previously-serialized compressed array
   array4(const zfp::array::header& header, const void* buffer = 0, size_t buffer_size_bytes = 0) :
     array(4, Codec::type, header),
-    store(header.size_x(), header.size_y(), header.size_z(), header.size_w(), header.rate()),
+    store(header.size_x(), header.size_y(), header.size_z(), header.size_w(), zfp_config_rate(header.rate(), true)),
     cache(store)
   {
     if (buffer) {
@@ -89,7 +97,7 @@ public:
   template <class View>
   array4(const View& v) :
     array(4, Codec::type),
-    store(v.size_x(), v.size_y(), v.size_z(), v.size_w(), v.rate()),
+    store(v.size_x(), v.size_y(), v.size_z(), v.size_w(), zfp_config_rate(v.rate(), true)),
     cache(store)
   {
     this->nx = v.size_x();
@@ -124,19 +132,34 @@ public:
   // resize the array (all previously stored data will be lost)
   void resize(size_t nx, size_t ny, size_t nz, size_t nw, bool clear = true)
   {
+    cache.clear();
     this->nx = nx;
     this->ny = ny;
     this->nz = nz;
     this->nw = nw;
     store.resize(nx, ny, nz, nw, clear);
-    cache.clear();
   }
 
   // rate in bits per value
-  double rate() const { return cache.rate(); }
+  double rate() const { return store.rate(); }
 
   // set rate in bits per value
-  double set_rate(double rate) { return cache.set_rate(rate); }
+  double set_rate(double rate)
+  {
+    cache.clear();
+    return store.set_rate(rate, true);
+  }
+
+  // byte size of array data structure components indicated by mask
+  size_t size_bytes(uint mask = ZFP_DATA_ALL) const
+  {
+    size_t size = 0;
+    size += store.size_bytes(mask);
+    size += cache.size_bytes(mask);
+    if (mask & ZFP_DATA_META)
+      size += sizeof(*this);
+    return size;
+  }
 
   // number of bytes of compressed data
   size_t compressed_size() const { return store.compressed_size(); }
@@ -176,9 +199,9 @@ public:
     const ptrdiff_t sz = static_cast<ptrdiff_t>(nx * ny);
     const ptrdiff_t sw = static_cast<ptrdiff_t>(nx * ny * nz);
     size_t block_index = 0;
-    for (size_t l = 0; l < bw; l++, p += 4 * nx * ny * (nz - bz))
-      for (size_t k = 0; k < bz; k++, p += 4 * nx * (ny - by))
-        for (size_t j = 0; j < by; j++, p += 4 * (nx - bx))
+    for (size_t l = 0; l < bw; l++, p += 4 * sz * (nz - bz))
+      for (size_t k = 0; k < bz; k++, p += 4 * sy * (ny - by))
+        for (size_t j = 0; j < by; j++, p += 4 * sx * (nx - bx))
           for (size_t i = 0; i < bx; i++, p += 4)
             cache.get_block(block_index++, p, sx, sy, sz, sw);
   }
@@ -195,9 +218,9 @@ public:
     const ptrdiff_t sz = static_cast<ptrdiff_t>(nx * ny);
     const ptrdiff_t sw = static_cast<ptrdiff_t>(nx * ny * nz);
     size_t block_index = 0;
-    for (size_t l = 0; l < bw; l++, p += 4 * nx * ny * (nz - bz))
-      for (size_t k = 0; k < bz; k++, p += 4 * nx * (ny - by))
-        for (size_t j = 0; j < by; j++, p += 4 * (nx - bx))
+    for (size_t l = 0; l < bw; l++, p += 4 * sz * (nz - bz))
+      for (size_t k = 0; k < bz; k++, p += 4 * sy * (ny - by))
+        for (size_t j = 0; j < by; j++, p += 4 * sx * (nx - bx))
           for (size_t i = 0; i < bx; i++, p += 4)
             cache.put_block(block_index++, p, sx, sy, sz, sw);
   }
@@ -220,7 +243,7 @@ public:
     return reference(this, i, j, k, l);
   }
 
-  // sequential iterators
+  // random access iterators
   const_iterator cbegin() const { return const_iterator(this, 0, 0, 0, 0); }
   const_iterator cend() const { return const_iterator(this, 0, 0, 0, nw); }
   const_iterator begin() const { return cbegin(); }
@@ -286,8 +309,8 @@ protected:
     l = index;
   }
 
-  BlockStore4<value_type, codec_type> store; // persistent storage of compressed blocks
-  BlockCache4<value_type, codec_type> cache; // cache of decompressed blocks
+  store_type store; // persistent storage of compressed blocks
+  cache_type cache; // cache of decompressed blocks
 };
 
 typedef array4<float> array4f;

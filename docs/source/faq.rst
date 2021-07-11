@@ -417,18 +417,21 @@ Issues may arise on architectures that do not support IEEE floating point.
 
 Q12: *How can I achieve finer rate granularity?*
 
-A: For *d*-dimensional arrays, |zfp| supports a rate granularity of 8 / |4powd|
-bits, i.e., the rate can be specified in increments of a fraction of a bit for
-2D and 3D arrays.  Such fine rate selection is always available for sequential
-compression (e.g., when calling :c:func:`zfp_compress`).
+A: For *d*-dimensional data, |zfp| supports a rate granularity of 1 / |4powd|
+bits, i.e., the rate can be specified in increments of a fraction of a bit.
+Such fine rate selection is always available for sequential compression
+(e.g., when calling :c:func:`zfp_compress`).
 
-Unlike in sequential compression, |zfp|'s compressed arrays require random
-access writes, which are supported only at the granularity of whole words.
-By default, a word is 64 bits, which gives a rate granularity of
-64 / |4powd| in *d* dimensions, i.e., 16 bits in 1D, 4 bits in 2D, and 1 bit
-in 3D.
+Unlike in sequential compression, |zfp|'s
+:ref:`read-write compressed-array classes <array_classes>` require
+random-access writes, which are supported only at the granularity of whole
+words.  By default, a word is 64 bits, which gives a rate granularity of
+64 / |4powd| in *d* dimensions, i.e., 16 bits in 1D, 4 bits in 2D, 1 bit
+in 3D, and 0.25 bits in 4D.
+:ref:`Read-only compressed arrays <carray_classes>` support the same fine
+granularity as sequential compression.
 
-To achieve finer granularity, recompile |zfp| with a smaller (but as large as
+To achieve finer granularity, build |zfp| with a smaller (but as large as
 possible) stream word size, e.g.::
 
   -DBIT_STREAM_WORD_TYPE=uint8
@@ -646,7 +649,11 @@ compressed array classes, the user may request write random access to the
 fixed-rate stream.  To support this, each block must be aligned on a stream
 word boundary (see :ref:`Q12 <q-granularity>`), and therefore the rate when
 write random access is requested must be a multiple of *wordsize* / |4powd|
-bits.  By default *wordsize* = 64 bits.
+bits.  By default *wordsize* = 64 bits.  Even when write random access is
+not requested, the compressed stream is written in units of *wordsize*.
+Hence, once the stream is flushed, either by a :c:func:`zfp_compress` or
+:c:func:`zfp_stream_flush` call, to output any buffered bits, its size
+will be a multiple of *wordsize* bits.
 
 Fourth, for floating-point data, each block must hold at least the common
 exponent and one additional bit, which places a lower bound on the rate.
@@ -655,6 +662,8 @@ Finally, the user may optionally include a header with each array.  Although
 the header is small, it must be accounted for in the rate.  The function
 :c:func:`zfp_stream_maximum_size` conservatively includes space for a header,
 for instance.
+
+Aside from these caveats, |zfp| is guaranteed to meet the exact rate specified.
 
 -------------------------------------------------------------------------------
 

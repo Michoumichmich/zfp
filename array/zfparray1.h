@@ -6,6 +6,7 @@
 #include <iterator>
 #include "zfparray.h"
 #include "zfpcodec.h"
+#include "zfpindex.h"
 #include "zfp/cache1.h"
 #include "zfp/store1.h"
 #include "zfp/handle1.h"
@@ -17,13 +18,20 @@
 namespace zfp {
 
 // compressed 2D array of scalars
-template < typename Scalar, class Codec = zfp::zfp_codec<Scalar, 1> >
+template <
+  typename Scalar,
+  class Codec = zfp::codec::zfp1<Scalar>,
+  class Index = zfp::index::implicit
+>
 class array1 : public array {
 public:
   // types utilized by nested classes
   typedef array1 container_type;
   typedef Scalar value_type;
   typedef Codec codec_type;
+  typedef Index index_type;
+  typedef BlockStore1<value_type, codec_type, index_type> store_type;
+  typedef BlockCache1<value_type, store_type> cache_type;
   typedef typename Codec::header header;
 
   // accessor classes
@@ -48,7 +56,7 @@ public:
   // cache_size bytes of cache, and optionally initialized from flat array p
   array1(size_t nx, double rate, const value_type* p = 0, size_t cache_size = 0) :
     array(1, Codec::type),
-    store(nx, rate),
+    store(nx, zfp_config_rate(rate, true)),
     cache(store, cache_size)
   {
     this->nx = nx;
@@ -59,7 +67,7 @@ public:
   // constructor, from previously-serialized compressed array
   array1(const zfp::array::header& header, const void* buffer = 0, size_t buffer_size_bytes = 0) :
     array(1, Codec::type, header),
-    store(header.size_x(), header.rate()),
+    store(header.size_x(), zfp_config_rate(header.rate(), true)),
     cache(store)
   {
     if (buffer) {
@@ -80,7 +88,7 @@ public:
   template <class View>
   array1(const View& v) :
     array(1, Codec::type),
-    store(v.size_x(), v.rate()),
+    store(v.size_x(), zfp_config_rate(v.rate(), true)),
     cache(store)
   {
     this->nx = v.size_x();
@@ -109,16 +117,31 @@ public:
   // resize the array (all previously stored data will be lost)
   void resize(size_t nx, bool clear = true)
   {
+    cache.clear();
     this->nx = nx;
     store.resize(nx, clear);
-    cache.clear();
   }
 
   // rate in bits per value
-  double rate() const { return cache.rate(); }
+  double rate() const { return store.rate(); }
 
   // set rate in bits per value
-  double set_rate(double rate) { return cache.set_rate(rate); }
+  double set_rate(double rate)
+  {
+    cache.clear();
+    return store.set_rate(rate, true);
+  }
+
+  // byte size of array data structure components indicated by mask
+  size_t size_bytes(uint mask = ZFP_DATA_ALL) const
+  {
+    size_t size = 0;
+    size += store.size_bytes(mask);
+    size += cache.size_bytes(mask);
+    if (mask & ZFP_DATA_META)
+      size += sizeof(*this);
+    return size;
+  }
 
   // number of bytes of compressed data
   size_t compressed_size() const { return store.compressed_size(); }
@@ -166,7 +189,7 @@ public:
       cache.put_block(block_index++, p, sx);
   }
 
-  // (i, j) accessors
+  // accessors
   const_reference operator()(size_t i) const { return const_reference(const_cast<container_type*>(this), i); }
   reference operator()(size_t i) { return reference(this, i); }
 
@@ -220,8 +243,8 @@ protected:
   void mul(size_t i, value_type val) { cache.ref(i) *= val; }
   void div(size_t i, value_type val) { cache.ref(i) /= val; }
 
-  BlockStore1<value_type, codec_type> store; // persistent storage of compressed blocks
-  BlockCache1<value_type, codec_type> cache; // cache of decompressed blocks
+  store_type store; // persistent storage of compressed blocks
+  cache_type cache; // cache of decompressed blocks
 };
 
 typedef array1<float> array1f;
