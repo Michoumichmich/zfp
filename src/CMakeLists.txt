@@ -10,6 +10,13 @@ if(ZFP_WITH_CUDA)
 endif()
 
 
+if(ZFP_WITH_SYCL)
+  add_subdirectory(sycl_zfp)
+  add_definitions(-DZFP_WITH_SYCL)
+endif()
+
+
+
 set(zfp_source
   zfp.c
   bitstream.c
@@ -24,7 +31,13 @@ set(zfp_source
   decode4f.c decode4d.c decode4i.c decode4l.c)
 
 add_library(zfp ${zfp_source}
-                ${zfp_cuda_backend_obj})
+                ${zfp_cuda_backend_obj} )
+
+if(ZFP_WITH_SYCL)
+  add_sycl_to_target(TAREGET zfp)
+  target_link_libraries(zfp PRIVATE syclZFP_static_lib)
+  endif()
+
 add_library(zfp::zfp ALIAS zfp)
 
 if(ZFP_WITH_OPENMP)

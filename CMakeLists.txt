@@ -24,7 +24,7 @@ string(REGEX REPLACE ".*#define[ \t]+ZFP_VERSION_PATCH[ \t]+([0-9]+).*"
 set(ZFP_VERSION
   "${ZFP_VERSION_MAJOR}.${ZFP_VERSION_MINOR}.${ZFP_VERSION_PATCH}")
 
-project(ZFP VERSION ${ZFP_VERSION})
+project(ZFP)# VERSION ${ZFP_VERSION})
 
 #------------------------------------------------------------------------------#
 # Some boilerplate to setup nice output directories
@@ -168,6 +168,14 @@ if(ZFP_WITH_OPENMP AND NOT OpenMP_C_LIBRARIES)
   set(OpenMP_C_LIBRARIES ${OpenMP_C_FLAGS})
 endif()
 
+if(ZFP_WITH_SYCL)
+  set(CMAKE_CXX_STANDARD 17)
+ # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Wno-unknown-cuda-version -DSYCL_USE_NATIVE_FP_ATOMICS")
+  set(DPCPP_FLAGS -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Wno-unknown-cuda-version -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -DSYCL_USE_NATIVE_FP_ATOMICS)
+  include(cmake/FindSYCL.cmake)
+  include_directories(include)
+endif()
+
 if(ZFP_WITH_CUDA)
   # use CUDA_BIN_DIR hint
   set(ENV{CUDA_BIN_PATH} ${CUDA_BIN_DIR})
@@ -186,7 +194,8 @@ if(ZFP_WITH_CUDA)
   set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} \
                         -gencode arch=compute_35,code=compute_35 \
                         -gencode arch=compute_60,code=compute_60 \
-                        -gencode arch=compute_70,code=compute_70")
+                        -gencode arch=compute_70,code=compute_70 \
+                        -gencode arch=compute_75,code=compute_75")
 endif()
 
 if(NOT (ZFP_BIT_STREAM_WORD_SIZE EQUAL 64))
