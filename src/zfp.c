@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "zfp.h"
 #include "zfp/macros.h"
+#include "zfp/version.h"
 #include "template/template.h"
 
 /* public data ------------------------------------------------------------- */
@@ -19,13 +20,13 @@ type_precision(zfp_type type)
 {
   switch (type) {
     case zfp_type_int32:
-      return CHAR_BIT * (uint)sizeof(int32);
+      return (uint)(CHAR_BIT * sizeof(int32));
     case zfp_type_int64:
-      return CHAR_BIT * (uint)sizeof(int64);
+      return (uint)(CHAR_BIT * sizeof(int64));
     case zfp_type_float:
-      return CHAR_BIT * (uint)sizeof(float);
+      return (uint)(CHAR_BIT * sizeof(float));
     case zfp_type_double:
-      return CHAR_BIT * (uint)sizeof(double);
+      return (uint)(CHAR_BIT * sizeof(double));
     default:
       return 0;
   }
@@ -475,6 +476,75 @@ zfp_field_set_metadata(zfp_field* field, uint64 meta)
   }
   field->sx = field->sy = field->sz = field->sw = 0;
   return zfp_true;
+}
+
+/* public functions: compression mode and parameter settings --------------- */
+
+zfp_config
+zfp_config_none()
+{
+  zfp_config config;
+  config.mode = zfp_mode_null;
+  return config;
+}
+
+zfp_config
+zfp_config_rate(
+  double rate,
+  zfp_bool align
+)
+{
+  zfp_config config;
+  config.mode = zfp_mode_fixed_rate;
+  config.arg.rate = align ? -rate : +rate;
+  return config;
+}
+
+zfp_config
+zfp_config_precision(
+  uint precision
+)
+{
+  zfp_config config;
+  config.mode = zfp_mode_fixed_precision;
+  config.arg.precision = precision;
+  return config;
+}
+
+zfp_config
+zfp_config_accuracy(
+  double tolerance
+)
+{
+  zfp_config config;
+  config.mode = zfp_mode_fixed_accuracy;
+  config.arg.tolerance = tolerance;
+  return config;
+}
+
+zfp_config
+zfp_config_reversible()
+{
+  zfp_config config;
+  config.mode = zfp_mode_reversible;
+  return config;
+}
+
+zfp_config
+zfp_config_expert(    
+  uint minbits,
+  uint maxbits,
+  uint maxprec,
+  int minexp
+)
+{
+  zfp_config config;
+  config.mode = zfp_mode_expert;
+  config.arg.expert.minbits = minbits;
+  config.arg.expert.maxbits = maxbits;
+  config.arg.expert.maxprec = maxprec;
+  config.arg.expert.minexp = minexp;
+  return config;
 }
 
 /* public functions: zfp compressed stream --------------------------------- */

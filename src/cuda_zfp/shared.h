@@ -12,7 +12,7 @@ typedef unsigned long long Word;
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
-#define bitsize(x) (CHAR_BIT * (uint)sizeof(x))
+#define bitsize(x) ((uint)(CHAR_BIT * sizeof(x)))
 
 #define LDEXP(x, e) ldexp(x, e)
 
@@ -89,9 +89,17 @@ size_t calc_device_mem3d(const uint3 encoded_dims,
 
 dim3 get_max_grid_dims()
 {
-  cudaDeviceProp prop; 
-  int device = 0;
-  cudaGetDeviceProperties(&prop, device);
+  static cudaDeviceProp prop;
+  static bool firstTime = true;
+
+  if( firstTime )
+  {
+    firstTime = false;
+
+    int device = 0;
+    cudaGetDeviceProperties(&prop, device);
+  }
+
   dim3 grid_dims;
   grid_dims.x = prop.maxGridSize[0];
   grid_dims.y = prop.maxGridSize[1];
@@ -187,7 +195,7 @@ __device__
 double
 dequantize<long long int, double>(const long long int &x, const int &e)
 {
-	return LDEXP((double)x, e - (CHAR_BIT * scalar_sizeof<double>() - 2));
+	return LDEXP((double)x, e - ((int)(CHAR_BIT * scalar_sizeof<double>()) - 2));
 }
 
 template<>
@@ -195,7 +203,7 @@ __device__
 float
 dequantize<int, float>(const int &x, const int &e)
 {
-	return LDEXP((float)x, e - (CHAR_BIT * scalar_sizeof<float>() - 2));
+	return LDEXP((float)x, e - ((int)(CHAR_BIT * scalar_sizeof<float>()) - 2));
 }
 
 template<>

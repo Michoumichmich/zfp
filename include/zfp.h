@@ -9,34 +9,10 @@
 
 #include "zfp/types.h"
 #include "zfp/system.h"
+#include "zfp/version.h"
 #include "bitstream.h"
 
 /* macros ------------------------------------------------------------------ */
-
-/* stringification */
-#define _zfp_str_(x) # x
-#define _zfp_str(x) _zfp_str_(x)
-
-/* library version information */
-#define ZFP_VERSION_MAJOR 0 /* library major version number */
-#define ZFP_VERSION_MINOR 5 /* library minor version number */
-#define ZFP_VERSION_PATCH 5 /* library patch version number */
-#define ZFP_VERSION_RELEASE ZFP_VERSION_PATCH
-
-/* codec version number (see also zfp_codec_version) */
-#define ZFP_CODEC 5
-
-/* library version number (see also zfp_library_version) */
-#define ZFP_VERSION \
-  ((ZFP_VERSION_MAJOR << 8) + \
-   (ZFP_VERSION_MINOR << 4) + \
-   (ZFP_VERSION_PATCH << 0))
-
-/* library version string (see also zfp_version_string) */
-#define ZFP_VERSION_STRING \
-  _zfp_str(ZFP_VERSION_MAJOR) "." \
-  _zfp_str(ZFP_VERSION_MINOR) "." \
-  _zfp_str(ZFP_VERSION_PATCH)
 
 /* default compression parameters */
 #define ZFP_MIN_BITS     1 /* minimum number of bits per block */
@@ -45,10 +21,21 @@
 #define ZFP_MIN_EXP  -1074 /* minimum floating-point base-2 exponent */
 
 /* header masks (enable via bitwise or; reader must use same mask) */
+#define ZFP_HEADER_NONE   0x0u /* no header */
 #define ZFP_HEADER_MAGIC  0x1u /* embed 64-bit magic */
 #define ZFP_HEADER_META   0x2u /* embed 52-bit field metadata */
 #define ZFP_HEADER_MODE   0x4u /* embed 12- or 64-bit compression mode */
 #define ZFP_HEADER_FULL   0x7u /* embed all of the above */
+
+/* bit masks for specifying storage class */
+#define ZFP_DATA_UNUSED  0x01u /* allocated but unused storage */
+#define ZFP_DATA_PADDING 0x02u /* padding for alignment purposes */
+#define ZFP_DATA_META    0x04u /* class members and other fixed-size storage */
+#define ZFP_DATA_MISC    0x08u /* miscellaneous uncategorized storage */
+#define ZFP_DATA_PAYLOAD 0x10u /* compressed data */
+#define ZFP_DATA_INDEX   0x20u /* variable-rate block index information */
+#define ZFP_DATA_CACHE   0x40u /* uncompressed cached data */
+#define ZFP_DATA_ALL     0x7fu /* all storage */
 
 /* field metadata indeterminate state and error code */
 #define ZFP_META_NULL (UINT64C(-1))
@@ -60,6 +47,11 @@
 #define ZFP_MODE_LONG_BITS   64 /* number of mode bits in long format */
 #define ZFP_HEADER_MAX_BITS 148 /* max number of header bits */
 #define ZFP_MODE_SHORT_MAX  ((1u << ZFP_MODE_SHORT_BITS) - 2)
+
+/* rounding mode for reducing bias; see build option ZFP_ROUNDING_MODE */
+#define ZFP_ROUND_FIRST (-1) /* round during compression */
+#define ZFP_ROUND_NEVER 0    /* never round */
+#define ZFP_ROUND_LAST  1    /* round during decompression */
 
 /* types ------------------------------------------------------------------- */
 
@@ -114,6 +106,22 @@ typedef enum {
   zfp_mode_fixed_accuracy  = 4, /* fixed accuracy mode */
   zfp_mode_reversible      = 5  /* reversible (lossless) mode */
 } zfp_mode;
+
+/* compression mode and parameter settings */
+typedef struct {
+  zfp_mode mode;      /* compression mode */
+  union {
+    double rate;      /* compressed bits/value (negative for word alignment) */
+    uint precision;   /* uncompressed bits/value */
+    double tolerance; /* absolute error tolerance */
+    struct {
+      uint minbits;   /* min number of compressed bits/block */
+      uint maxbits;   /* max number of compressed bits/block */
+      uint maxprec;   /* max number of uncompressed bits/value */
+      int minexp;     /* min floating point bit plane number to store */
+    } expert;         /* expert mode arguments */
+  } arg;              /* arguments corresponding to compression mode */
+} zfp_config;
 
 /* scalar type */
 typedef enum {
@@ -326,6 +334,44 @@ zfp_bool              /* true upon success */
 zfp_stream_set_omp_chunk_size(
   zfp_stream* stream, /* compressed stream */
   uint chunk_size     /* number of blocks per chunk (0 for default) */
+);
+
+/* high-level API: compression mode and parameter settings ----------------- */
+
+/* unspecified configuration */
+zfp_config /* compression mode and parameter settings */
+zfp_config_none();
+
+/* fixed-rate configuration */
+zfp_config       /* compression mode and parameter settings */
+zfp_config_rate(
+  double rate,   /* desired rate in compressed bits/scalar */
+  zfp_bool align /* word-aligned blocks, e.g., for write random access */
+);
+
+/* fixed-precision configuration */
+zfp_config       /* compression mode and parameter settings */
+zfp_config_precision(
+  uint precision /* desired precision in uncompressed bits/scalar */
+);
+
+/* fixed-accuracy configuration */
+zfp_config         /* compression mode and parameter settings */
+zfp_config_accuracy(
+  double tolerance /* desired error tolerance */
+);
+
+/* reversible (lossless) configuration */
+zfp_config /* compression mode and parameter settings */
+zfp_config_reversible();
+
+/* expert configuration */
+zfp_config      /* compression mode and parameter settings */
+zfp_config_expert(
+  uint minbits, /* minimum number of bits per 4^d block */
+  uint maxbits, /* maximum number of bits per 4^d block */
+  uint maxprec, /* maximum precision (# bit planes coded) */
+  int minexp    /* minimum base-2 exponent; error <= 2^minexp */
 );
 
 /* high-level API: uncompressed array construction/destruction ------------- */
