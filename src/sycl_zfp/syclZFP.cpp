@@ -126,8 +126,8 @@ namespace internal {
         } else if (d == 3) {
             sycl::int3 s(stride);
             sycl::id<3> ndims(dims[0], dims[1], dims[2]);
-            stream_size = syclZFP::encode<T, variable_rate>(q, ndims, s, d_data, d_stream, d_bitlengths,
-                                                            minbits, maxbits, maxprec, minexp);
+            stream_size = syclZFP::encode3<T, variable_rate>(q, ndims, s, d_data, d_stream, d_bitlengths,
+                                                             minbits, maxbits, maxprec, minexp);
         }
         return stream_size;
     }
@@ -377,7 +377,6 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
     sycl::queue q{sycl::gpu_selector{}};
     assert(q.get_device().has(sycl::aspect::usm_device_allocations));
 
-
     uint dims[3];
     dims[2] = field->nx;
     dims[1] = field->ny;
@@ -386,7 +385,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
     sycl::int3 stride;
     stride[2] = field->sx ? field->sx : 1;
     stride[1] = field->sy ? (int) field->sy : (int) field->nx;
-    stride[0] = field->sz ? (int) field->sz : (int) field->nx * (int) field->ny;
+    stride[0] = field->sz ? (int) field->sz : (int) (field->nx * field->ny);
 
     size_t stream_bytes = 0;
     long long int offset = 0;
@@ -398,7 +397,6 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
     }
 
     int num_sm = (int) q.get_device().get_info<sycl::info::device::max_compute_units>();
-
 
     Word *d_stream = internal::setup_device_stream_compress(q, stream, field);
 
@@ -485,7 +483,8 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
 
     // zfp wants to flush the stream.
     // set bits to wsize because we already did that.
-    size_t compressed_size = (stream_bytes + sizeof(Word) - 1) / sizeof(Word);
+    //size_t compressed_size = (stream_bytes + sizeof(Word) - 1) / sizeof(Word); //???
+    size_t compressed_size = stream_bytes / sizeof(Word); //???
     stream->stream->bits = wsize;
     // set stream pointer to end of stream
     stream->stream->ptr = stream->stream->begin + compressed_size;
@@ -504,7 +503,7 @@ void sycl_decompress(zfp_stream *stream, zfp_field *field) {
     sycl::int3 stride;
     stride[2] = field->sx ? field->sx : 1;
     stride[1] = field->sy ? (int) field->sy : (int) field->nx;
-    stride[0] = field->sz ? (int) field->sz : (int) field->nx * (int) field->ny;
+    stride[0] = field->sz ? (int) field->sz : (int) (field->nx * field->ny);
 
     size_t decoded_bytes = 0;
     long long int offset = 0;

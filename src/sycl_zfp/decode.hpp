@@ -7,14 +7,13 @@ namespace syclZFP {
 /* map two's complement signed integer to negabinary unsigned integer */
 //DEVICE
     inline long long int uint2int(unsigned long long int x) {
-        return (x ^ 0xaaaaaaaaaaaaaaaaull) - 0xaaaaaaaaaaaaaaaaull;
+        return (x ^ get_nbmask<unsigned long long int>()) - get_nbmask<unsigned long long int>();
     }
 
-    inline
-//DEVICE
-    int uint2int(unsigned int x) {
-        return (x ^ 0xaaaaaaaau) - 0xaaaaaaaau;
+    inline int uint2int(unsigned int x) {
+        return (x ^ get_nbmask<unsigned int>()) - get_nbmask<unsigned int>();
     }
+
 
     template<int block_size>
     class BlockReader {
@@ -103,7 +102,7 @@ namespace syclZFP {
         uint64 x;
         // maxprec = 64;
         const uint kmin = 0; //= intprec > maxprec ? intprec - maxprec : 0;
-        long int bits = max_bits;
+        uint bits = max_bits;
         for (uint k = intprec, n = 0; bits && k-- > kmin;) {
             // read bit plane
             uint m = MIN(n, bits);

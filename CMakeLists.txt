@@ -20,7 +20,7 @@ string(REGEX REPLACE ".*#define[ \t]+ZFP_VERSION_PATCH[ \t]+([0-9]+).*"
 set(ZFP_VERSION
   "${ZFP_VERSION_MAJOR}.${ZFP_VERSION_MINOR}.${ZFP_VERSION_PATCH}")
 
-project(ZFP)# VERSION ${ZFP_VERSION})
+project(ZFP VERSION ${ZFP_VERSION})
 
 #------------------------------------------------------------------------------#
 # Some boilerplate to setup nice output directories
@@ -172,7 +172,7 @@ endif()
 
 if(ZFP_WITH_SYCL)
   set(CMAKE_CXX_STANDARD 17)
- # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Wno-unknown-cuda-version -DSYCL_USE_NATIVE_FP_ATOMICS")
+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-targets=spir64_x86_64-unknown-unknowd-sycldevice -DSYCL_USE_NATIVE_FP_ATOMICS")
   set(DPCPP_FLAGS -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Wno-unknown-cuda-version -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -DSYCL_USE_NATIVE_FP_ATOMICS)
   include(cmake/FindSYCL.cmake)
   include_directories(include)

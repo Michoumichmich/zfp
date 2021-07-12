@@ -39,9 +39,9 @@ namespace syclZFP {
     }
 
     template<class Scalar, bool variable_rate>
-    void syclEncode(
+    void syclEncode3(
             sycl::nd_item<3> item,
-            const uint minbits,
+            const int minbits,
             const int maxbits,
             const int maxprec,
             const int minexp,
@@ -75,7 +75,7 @@ namespace syclZFP {
         block[0] = (block_idx / (block_dims[2] * block_dims[1])) * 4;
 
         // default strides
-        ll offset = (ll) block[2] * stride[2] + (ll) block[1] * stride[1] + (ll) block[0] * stride[0];
+        const ll offset = (ll) block[2] * stride[2] + (ll) block[1] * stride[1] + (ll) block[0] * stride[0];
         Scalar fblock[ZFP_3D_BLOCK_SIZE];
 
         bool partial = false;
@@ -145,7 +145,7 @@ namespace syclZFP {
         q.submit([&](sycl::handler &cgh) {
             cgh.depends_on(init_e);
             cgh.parallel_for(kernel_parameters, [=](sycl::nd_item<3> item) {
-                syclEncode<Scalar, variable_rate>
+                syclEncode3<Scalar, variable_rate>
                         (item,
                          minbits,
                          maxbits,
@@ -176,11 +176,12 @@ namespace syclZFP {
         return stream_bytes;
     }
 
+
     //
     // Just pass the raw pointer to the "real" encode
     //
     template<class Scalar, bool variable_rate>
-    size_t encode(
+    size_t encode3(
             sycl::queue &q,
             sycl::id<3> dims,
             sycl::int3 stride,

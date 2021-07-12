@@ -133,4 +133,14 @@ namespace syclZFP {
     };
 
 
+    template<typename T>
+    inline T get_nbmask();
+
+    template<>
+    inline unsigned int get_nbmask<unsigned int>() { return 0xaaaaaaaau; }
+
+    template<>
+    inline unsigned long long int get_nbmask<unsigned long long int>() { return 0xaaaaaaaaaaaaaaaaull; }
+
+
 }

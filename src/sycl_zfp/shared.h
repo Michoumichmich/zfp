@@ -9,9 +9,9 @@ typedef unsigned long long Word;
 #include "type_info.hpp"
 #include "constants.h"
 
-#define MAX(x, y) ((x) > (y) ? (x) : (y))
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-#define bitsize(x) (CHAR_BIT * (uint)sizeof(x))
+#define MAX(x, y) (sycl::max((x), (y)))
+#define MIN(x, y) (sycl::min((x),(y)))
+#define bitsize(x) ((uint)(CHAR_BIT * sizeof(x)))
 
 #define NBMASK 0xaaaaaaaaaaaaaaaaull
 
@@ -77,7 +77,7 @@ namespace syclZFP {
         return q.get_device().get_info<sycl::info::device::ext_oneapi_max_number_work_groups>();
 #else
 #pragma message "Missing SYCL information descriptor to check the max number of work groups allowed"
-        return {(2**31)-1, (2**31)-1, (2**31)-1 };
+        return {(1<<30)-1, (1<<30)-1, (1<<30)-1};
 #endif
     }
 
@@ -136,17 +136,18 @@ namespace syclZFP {
         grid_size[0] = sycl::max(1ul, grid_size[0]);
         grid_size[1] = sycl::max(1ul, grid_size[1]);
         grid_size[2] = sycl::max(1ul, grid_size[2]);
+        //printf("Grid size %lu %lu %lu\n", grid_size[2], grid_size[1], grid_size[0]);
         return grid_size;
     }
 
 
 // map two's complement signed integer to negabinary unsigned integer
     inline unsigned long long int int2uint(const long long int x) {
-        return (x + (unsigned long long int) 0xaaaaaaaaaaaaaaaaull) ^ (unsigned long long int) 0xaaaaaaaaaaaaaaaaull;
+        return (x + get_nbmask<unsigned long long int>() ^ get_nbmask<unsigned long long int>());
     }
 
     inline unsigned int int2uint(const int x) {
-        return (x + (unsigned int) 0xaaaaaaaau) ^ (unsigned int) 0xaaaaaaaau;
+        return (x + get_nbmask<unsigned int>() ^ get_nbmask<unsigned int>());
     }
 
 
@@ -155,12 +156,12 @@ namespace syclZFP {
 
     template<>
     double dequantize<long long int, double>(const long long int &x, const int &e) {
-        return sycl::ldexp((double) x, e - (CHAR_BIT * scalar_sizeof<double>() - 2));
+        return sycl::ldexp((double) x, e - (int) (CHAR_BIT * scalar_sizeof<double>() - 2));
     }
 
     template<>
     float dequantize<int, float>(const int &x, const int &e) {
-        return sycl::ldexp((float) x, e - (CHAR_BIT * scalar_sizeof<float>() - 2));
+        return sycl::ldexp((float) x, e - (int) (CHAR_BIT * scalar_sizeof<float>() - 2));
     }
 
     template<>

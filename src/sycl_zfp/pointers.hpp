@@ -34,11 +34,12 @@ namespace syclZFP {
                         break;
                 }
             }
-            return alloc_type == sycl::usm::alloc::shared // Shared memory is ok
-                   || alloc_type == sycl::usm::alloc::device // Device memory is ok
-                   || (q.get_device().is_host() && alloc_type != sycl::usm::alloc::unknown) // If we're on the host, anything known is OK.
-                   || (q.get_device().is_cpu() && alloc_type != sycl::usm::alloc::unknown) // ???? is accessing host mem from CPU backend fine ?
-                    ;
+//            return alloc_type == sycl::usm::alloc::shared // Shared memory is ok
+//                  || alloc_type == sycl::usm::alloc::device // Device memory is ok
+//                   || (q.get_device().is_host() && alloc_type != sycl::usm::alloc::unknown) // If we're on the host, anything known is OK.
+//                   || (q.get_device().is_cpu() && alloc_type != sycl::usm::alloc::unknown) // ???? is accessing host mem from CPU backend fine ?
+//                    ;
+            return false;
         } catch (...) {
             if constexpr (debug) {
                 std::cerr << "Not allocated on:" << q.get_device().get_info<sycl::info::device::name>() << '\n';
