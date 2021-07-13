@@ -7,15 +7,15 @@
 #include "ErrorCheck.h"
 #include "type_info.cuh"
 
-namespace cuZFP
-{
+#define ZFP_2D_BLOCK_SIZE 16
 
-template<typename Scalar> 
-__device__ __host__ inline 
-void gather_partial2(Scalar* q, const Scalar* p, int nx, int ny, int sx, int sy)
-{
-  uint x, y;
-  for (y = 0; y < 4; y++)
+namespace cuZFP {
+
+    template<typename Scalar>
+    __device__ __host__ inline
+    void gather_partial2(Scalar *q, const Scalar *p, int nx, int ny, int sx, int sy) {
+        uint x, y;
+        for (y = 0; y < 4; y++)
     if (y < ny) {
       for (x = 0; x < 4; x++)
         if (x < nx) {
@@ -39,29 +39,25 @@ void gather2(Scalar* q, const Scalar* p, int sx, int sy)
       *q++ = *p;
 }
 
-template <class Scalar, bool variable_rate>
-__global__ void
-cudaEncode2(const int minbits,
-            const int maxbits,
-            const int maxprec,
-            const int minexp,
-            const Scalar *scalars,
-            Word *stream,
-            ushort *block_bits,
-            const uint2 dims,
-            const int2 stride,
-            const uint2 padded_dims,
-            const uint tot_blocks)
-{
+    template<class Scalar>
+    __global__
+    void
+    cudaEncode2(const uint maxbits,
+                const Scalar *scalars,
+                Word *stream,
+                const uint2 dims,
+                const int2 stride,
+                const uint2 padded_dims,
+                const uint tot_blocks) {
 
-  typedef unsigned long long int ull;
-  typedef long long int ll;
-  const ull blockId = blockIdx.x +
-                      blockIdx.y * gridDim.x +
-                      gridDim.x * gridDim.y * blockIdx.z;
+        typedef unsigned long long int ull;
+        typedef long long int ll;
+        const ull blockId = blockIdx.x +
+                            blockIdx.y * gridDim.x +
+                            gridDim.x * gridDim.y * blockIdx.z;
 
-  // each thread gets a block so the block index is 
-  // the global thread index
+        // each thread gets a block so the block index is
+        // the global thread index
   const uint block_idx = blockId * blockDim.x + threadIdx.x;
 
   if(block_idx >= tot_blocks)
@@ -90,40 +86,31 @@ cudaEncode2(const int minbits,
  
   if(partial) 
   {
-    const uint nx = block.x + 4 > dims.x ? dims.x - block.x : 4;
-    const uint ny = block.y + 4 > dims.y ? dims.y - block.y : 4;
-    gather_partial2(fblock, scalars + offset, nx, ny, stride.x, stride.y);
+      const uint nx = block.x + 4 > dims.x ? dims.x - block.x : 4;
+      const uint ny = block.y + 4 > dims.y ? dims.y - block.y : 4;
+      gather_partial2(fblock, scalars + offset, nx, ny, stride.x, stride.y);
 
-  }
-  else
-  {
-    gather2(fblock, scalars + offset, stride.x, stride.y);
+  } else {
+      gather2(fblock, scalars + offset, stride.x, stride.y);
   }
 
-  uint bits = zfp_encode_block<Scalar, ZFP_2D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec,
-                                                          minexp, block_idx, stream);
-  if (variable_rate)
-    block_bits[block_idx] = bits;
-}
+        zfp_encode_block<Scalar, ZFP_2D_BLOCK_SIZE>(fblock, maxbits, block_idx, stream);
+
+    }
 
 //
 // Launch the encode kernel
 //
-template<class Scalar, bool variable_rate>
-size_t encode2launch(uint2 dims, 
-                     int2 stride,
-                     const Scalar *d_data,
-                     Word *stream,
-                     ushort *d_block_bits,
-                     const int minbits,
-                     const int maxbits,
-                     const int maxprec,
-                     const int minexp)
-{
-  const int cuda_block_size = 128;
-  dim3 block_size = dim3(cuda_block_size, 1, 1);
+    template<class Scalar>
+    size_t encode2launch(uint2 dims,
+                         int2 stride,
+                         const Scalar *d_data,
+                         Word *stream,
+                         const int maxbits) {
+        const int cuda_block_size = 128;
+        dim3 block_size = dim3(cuda_block_size, 1, 1);
 
-  uint2 zfp_pad(dims); 
+        uint2 zfp_pad(dims);
   if(zfp_pad.x % 4 != 0) zfp_pad.x += 4 - dims.x % 4;
   if(zfp_pad.y % 4 != 0) zfp_pad.y += 4 - dims.y % 4;
 
@@ -145,32 +132,28 @@ size_t encode2launch(uint2 dims,
 
   //
   size_t stream_bytes = calc_device_mem2d(zfp_pad, maxbits);
-  // ensure we have zeros
-  cudaMemset(stream, 0, stream_bytes);
+        // ensure we have zeros
+        cudaMemset(stream, 0, stream_bytes);
 
 #ifdef CUDA_ZFP_RATE_PRINT
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-  cudaEventRecord(start);
+        cudaEvent_t start, stop;
+        cudaEventCreate(&start);
+        cudaEventCreate(&stop);
+        cudaEventRecord(start);
 #endif
 
-  cudaEncode2<Scalar, variable_rate> <<<grid_size, block_size>>>
-    (minbits,
-     maxbits,
-     maxprec,
-     minexp,
-     d_data,
-     stream,
-     d_block_bits,
-     dims,
-     stride,
-     zfp_pad,
-     zfp_blocks);
+        cudaEncode2<Scalar> <<<grid_size, block_size>>>
+                (maxbits,
+                 d_data,
+                 stream,
+                 dims,
+                 stride,
+                 zfp_pad,
+                 zfp_blocks);
 
 #ifdef CUDA_ZFP_RATE_PRINT
-  cudaDeviceSynchronize();
-  cudaEventRecord(stop);
+        cudaDeviceSynchronize();
+        cudaEventRecord(stop);
   cudaEventSynchronize(stop);
   cudaStreamSynchronize(0);
 
@@ -185,20 +168,15 @@ size_t encode2launch(uint2 dims,
   return stream_bytes;
 }
 
-template<class Scalar, bool variable_rate>
-size_t encode2(uint2 dims,
-               int2 stride,
-               Scalar *d_data,
-               Word *stream,
-               ushort *d_block_bits,
-               const int minbits,
-               const int maxbits,
-               const int maxprec,
-               const int minexp)
-{
-  return encode2launch<Scalar, variable_rate>(dims, stride, d_data, stream, d_block_bits,
-                                              minbits, maxbits, maxprec, minexp);
-}
+    template<class Scalar>
+    size_t encode2(uint2 dims,
+                   int2 stride,
+                   Scalar *d_data,
+                   Word *stream,
+                   const int maxbits) {
+        return encode2launch<Scalar>(dims, stride, d_data, stream, maxbits);
+    }
+
 }
 
 #endif

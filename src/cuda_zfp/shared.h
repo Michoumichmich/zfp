@@ -1,7 +1,7 @@
 #ifndef CUZFP_SHARED_H
 #define CUZFP_SHARED_H
 
-//#define CUDA_ZFP_RATE_PRINT 1
+#define CUDA_ZFP_RATE_PRINT 1
 typedef unsigned long long Word;
 #define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
 
@@ -17,11 +17,6 @@ typedef unsigned long long Word;
 #define LDEXP(x, e) ldexp(x, e)
 
 #define NBMASK 0xaaaaaaaaaaaaaaaaull
-
-#define ZFP_1D_BLOCK_SIZE 4 
-#define ZFP_2D_BLOCK_SIZE 16 
-#define ZFP_3D_BLOCK_SIZE 64
-#define ZFP_4D_BLOCK_SIZE 256
 
 namespace cuZFP
 {

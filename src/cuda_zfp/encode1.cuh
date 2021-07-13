@@ -7,6 +7,7 @@
 #include "type_info.cuh"
 
 #include <iostream>
+#define ZFP_1D_BLOCK_SIZE 4
 
 namespace cuZFP
 {
@@ -30,29 +31,25 @@ void gather1(Scalar* q, const Scalar* p, int sx)
     *q++ = *p;
 }
 
-template <class Scalar, bool variable_rate>
-__global__ void
-cudaEncode1(const int minbits,
-            const int maxbits,
-            const int maxprec,
-            const int minexp,
-            const Scalar *scalars,
-            Word *stream,
-            ushort *block_bits,
-            const uint dim,
-            const int sx,
-            const uint padded_dim,
-            const uint tot_blocks)
-{
+    template<class Scalar>
+    __global__
+    void
+    cudaEncode1(const uint maxbits,
+                const Scalar *scalars,
+                Word *stream,
+                const uint dim,
+                const int sx,
+                const uint padded_dim,
+                const uint tot_blocks) {
 
-  typedef unsigned long long int ull;
-  typedef long long int ll;
-  const ull blockId = blockIdx.x +
-                      blockIdx.y * gridDim.x +
-                      gridDim.x * gridDim.y * blockIdx.z;
+        typedef unsigned long long int ull;
+        typedef long long int ll;
+        const ull blockId = blockIdx.x +
+                            blockIdx.y * gridDim.x +
+                            gridDim.x * gridDim.y * blockIdx.z;
 
-  // each thread gets a block so the block index is 
-  // the global thread index
+        // each thread gets a block so the block index is
+        // the global thread index
   const uint block_idx = blockId * blockDim.x + threadIdx.x;
 
   if(block_idx >= tot_blocks)
@@ -75,40 +72,31 @@ cudaEncode1(const int minbits,
 
   bool partial = false;
   if(block + 4 > dim) partial = true;
- 
-  if(partial) 
-  {
-    uint nx = 4 - (padded_dim - dim);
-    gather_partial1(fblock, scalars + offset, nx, sx);
-  }
-  else
-  {
-    gather1(fblock, scalars + offset, sx);
-  }
 
-  uint bits = zfp_encode_block<Scalar, ZFP_1D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec,
-                                                          minexp, block_idx, stream);
-  if (variable_rate)
-    block_bits[block_idx] = bits;
-}
+        if (partial) {
+            uint nx = 4 - (padded_dim - dim);
+            gather_partial1(fblock, scalars + offset, nx, sx);
+        } else {
+            gather1(fblock, scalars + offset, sx);
+        }
+
+        zfp_encode_block<Scalar, ZFP_1D_BLOCK_SIZE>(fblock, maxbits, block_idx, stream);
+
+    }
+
 //
 // Launch the encode kernel
 //
-template<class Scalar, bool variable_rate>
-size_t encode1launch(uint dim, 
-                     int sx,
-                     const Scalar *d_data,
-                     Word *stream,
-                     ushort *d_block_bits,
-                     const int minbits,
-                     const int maxbits,
-                     const int maxprec,
-                     const int minexp)
-{
-  const int cuda_block_size = 128;
-  dim3 block_size = dim3(cuda_block_size, 1, 1);
+    template<class Scalar>
+    size_t encode1launch(uint dim,
+                         int sx,
+                         const Scalar *d_data,
+                         Word *stream,
+                         const int maxbits) {
+        const int cuda_block_size = 128;
+        dim3 block_size = dim3(cuda_block_size, 1, 1);
 
-  uint zfp_pad(dim); 
+        uint zfp_pad(dim);
   if(zfp_pad % 4 != 0) zfp_pad += 4 - dim % 4;
 
   const uint zfp_blocks = (zfp_pad) / 4; 
@@ -129,32 +117,28 @@ size_t encode1launch(uint dim,
   //
   size_t stream_bytes = calc_device_mem1d(zfp_pad, maxbits);
   // ensure we have zeros
-  cudaMemset(stream, 0, stream_bytes);
+        cudaMemset(stream, 0, stream_bytes);
 
 #ifdef CUDA_ZFP_RATE_PRINT
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
+        cudaEvent_t start, stop;
+        cudaEventCreate(&start);
+        cudaEventCreate(&stop);
 
-  cudaEventRecord(start);
+        cudaEventRecord(start);
 #endif
 
-  cudaEncode1<Scalar, variable_rate> <<<grid_size, block_size>>>
-    (minbits,
-     maxbits,
-     maxprec,
-     minexp,
-     d_data,
-     stream,
-     d_block_bits,
-     dim,
-     sx,
-     zfp_pad,
-     zfp_blocks);
+        cudaEncode1<Scalar> <<<grid_size, block_size>>>
+                (maxbits,
+                 d_data,
+                 stream,
+                 dim,
+                 sx,
+                 zfp_pad,
+                 zfp_blocks);
 
 #ifdef CUDA_ZFP_RATE_PRINT
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
   cudaStreamSynchronize(0);
 
   float miliseconds = 0.f;
@@ -171,20 +155,14 @@ size_t encode1launch(uint dim,
 //
 // Encode a host vector and output a encoded device vector
 //
-template<class Scalar, bool variable_rate>
-size_t encode1(int dim,
-               int sx,
-               Scalar *d_data,
-               Word *stream,
-               ushort *d_block_bits,
-               const int minbits,
-               const int maxbits,
-               const int maxprec,
-               const int minexp)
-{
-  return encode1launch<Scalar, variable_rate>(dim, sx, d_data, stream, d_block_bits,
-                                              minbits, maxbits, maxprec, minexp);
-}
+    template<class Scalar>
+    size_t encode1(int dim,
+                   int sx,
+                   Scalar *d_data,
+                   Word *stream,
+                   const int maxbits) {
+        return encode1launch<Scalar>(dim, sx, d_data, stream, maxbits);
+    }
 
 }
 
