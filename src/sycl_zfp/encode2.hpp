@@ -8,18 +8,15 @@ namespace syclZFP {
     template<typename Scalar>
     inline void gather_partial2(Scalar *q, const Scalar *p, int nx, int ny, int sx, int sy) {
         uint x, y;
-        for (y = 0; y < 4; y++)
-            if (y < ny) {
-                for (x = 0; x < 4; x++)
-                    if (x < nx) {
-                        q[4 * y + x] = *p;//[x * sx];
-                        p += sx;
-                    }
-                pad_block(q + 4 * y, nx, 1);
-                p += sy - nx * sx;
-            }
+        for (y = 0; y < ny; y++, p += sy - (ptrdiff_t) nx * sx) {
+            for (x = 0; x < nx; x++, p += sx)
+                q[4 * y + x] = *p;
+            pad_block(q + 4 * y, nx, 1);
+        }
         for (x = 0; x < 4; x++)
             pad_block(q + x, ny, 4);
+
+
     }
 
     template<typename Scalar>

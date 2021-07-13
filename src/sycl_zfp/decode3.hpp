@@ -8,19 +8,10 @@ namespace syclZFP {
     template<typename Scalar>
     inline void scatter_partial3(const Scalar *q, Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
         uint x, y, z;
-        for (z = 0; z < 4; z++)
-            if (z < nz) {
-                for (y = 0; y < 4; y++)
-                    if (y < ny) {
-                        for (x = 0; x < 4; x++)
-                            if (x < nx) {
-                                *p = q[16 * z + 4 * y + x];
-                                p += sx;
-                            }
-                        p += sy - nx * sx;
-                    }
-                p += sz - ny * sy;
-            }
+        for (z = 0; z < nz; z++, p += sz - (ptrdiff_t) ny * sy, q += 4 * (4 - ny))
+            for (y = 0; y < ny; y++, p += sy - (ptrdiff_t) nx * sx, q += 1 * (4 - nx))
+                for (x = 0; x < nx; x++, p += sx, q++)
+                    *p = *q;
     }
 
     template<typename Scalar>

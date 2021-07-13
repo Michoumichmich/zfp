@@ -375,6 +375,10 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
         return 0;
     }
     sycl::queue q{sycl::gpu_selector{}};
+
+#ifdef VERBOSE_SYCL
+    std::cout << "Compressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
+#endif
     assert(q.get_device().has(sycl::aspect::usm_device_allocations));
 
     uint dims[3];
@@ -494,6 +498,11 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
 
 void sycl_decompress(zfp_stream *stream, zfp_field *field) {
     sycl::queue q{sycl::gpu_selector{}};
+#ifdef VERBOSE_SYCL
+    std::cout << "Decompressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
+#endif
+
+
     assert(q.get_device().has(sycl::aspect::usm_device_allocations));
     uint dims[3];
     dims[2] = field->nx;

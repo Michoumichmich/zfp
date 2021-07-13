@@ -10,16 +10,14 @@ namespace syclZFP {
     template<typename Scalar>
     inline void gather_partial1(Scalar *q, const Scalar *p, int nx, int sx) {
         uint x;
-        for (x = 0; x < 4; x++)
-            if (x < nx) q[x] = p[x * sx];
+        for (x = 0; x < nx; x++, p += sx) { q[x] = *p; }
         pad_block(q, nx, 1);
     }
 
     template<typename Scalar>
     inline void gather1(Scalar *q, const Scalar *p, int sx) {
         uint x;
-        for (x = 0; x < 4; x++, p += sx)
-            *q++ = *p;
+        for (x = 0; x < 4; x++, p += sx) { *q++ = *p; }
     }
 
     template<class Scalar, bool variable_rate>

@@ -1,6 +1,5 @@
 #pragma once
 
-#define SYCL_ZFP_RATE_PRINT 1
 typedef unsigned long long Word;
 #define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
 

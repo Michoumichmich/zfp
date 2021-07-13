@@ -1,4 +1,7 @@
 #pragma once
+//#define IMPLICIT_MEMORY_COPY
+#define VERBOSE_SYCL
+#define SYCL_ZFP_RATE_PRINT 1
 
 #include "zfp.h"
 
