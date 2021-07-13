@@ -256,15 +256,18 @@ namespace syclZFP {
 
             Word b = bits - left;
             Word add = b << shift;
-            sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order_relaxed, sycl::ONEAPI::memory_scope_system, sycl::access::address_space::global_space> ref(m_stream[write_index]); //TODO
+            sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order_relaxed, sycl::ONEAPI::memory_scope_work_group, sycl::access::address_space::global_space> ref(m_stream[write_index]); //TODO
             ref += add;
+            //m_stream[write_index] += add;
+
             // n_bits straddles the word boundary
             bool straddle = seg_start < sizeof(Word) * 8 && seg_end >= sizeof(Word) * 8;
             if (straddle) {
                 Word rem = b >> (sizeof(Word) * 8 - shift);
-                sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order_relaxed, sycl::ONEAPI::memory_scope_system, sycl::access::address_space::global_space> ref_next(
+                sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order_relaxed, sycl::ONEAPI::memory_scope_work_group, sycl::access::address_space::global_space> ref_next(
                         m_stream[write_index + 1]); //TODO
                 ref_next += rem;
+                //m_stream[write_index + 1] += rem;
             }
             m_current_bit += n_bits;
             return bits >> (Word) n_bits;
@@ -282,8 +285,9 @@ namespace syclZFP {
             // uint zero_shift = sizeof(Word) * 8 - n_bits;
 
             Word add = (Word) bit << shift;
-            sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order_relaxed, sycl::ONEAPI::memory_scope_system, sycl::access::address_space::global_space> ref(m_stream[write_index]); //TODO
+            sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order_relaxed, sycl::ONEAPI::memory_scope_work_group, sycl::access::address_space::global_space> ref(m_stream[write_index]); //TODO
             ref += add;
+            //m_stream[write_index] += add;
             m_current_bit += 1;
 
             return bit;
