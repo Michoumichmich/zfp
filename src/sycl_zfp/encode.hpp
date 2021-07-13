@@ -5,7 +5,7 @@
 
 namespace syclZFP {
 
-// maximum number of bit planes to encode
+    // maximum number of bit planes to encode
     static int precision(int maxexp, int maxprec, int minexp) {
         return MIN(maxprec, MAX(0, maxexp - minexp + 8));
     }
@@ -66,7 +66,7 @@ namespace syclZFP {
         return exponent<Scalar>(max_val);
     }
 
-// lifting transform of 4-vector
+    // lifting transform of 4-vector
     template<class Int, uint s>
     static void fwd_lift(Int *p) {
 
