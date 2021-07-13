@@ -114,7 +114,8 @@ usage()
   fprintf(stderr, "  -x serial : serial compression (default)\n");
   fprintf(stderr, "  -x omp[=threads[,chunk_size]] : OpenMP parallel compression\n");
   fprintf(stderr, "  -x cuda : CUDA fixed rate parallel compression/decompression\n");
-  fprintf(stderr, "Examples:\n");
+    fprintf(stderr, "  -x sycl : SYCL fixed rate parallel compression/decompression\n");
+    fprintf(stderr, "Examples:\n");
   fprintf(stderr, "  -i file : read uncompressed file and compress to memory\n");
   fprintf(stderr, "  -z file : read compressed file and decompress to memory\n");
   fprintf(stderr, "  -i ifile -z zfile : read uncompressed ifile, write compressed zfile\n");
@@ -291,9 +292,11 @@ int main(int argc, char* argv[])
           chunk_size = 0;
         }
         else if (!strcmp(argv[i], "cuda"))
-          exec = zfp_exec_cuda;
+            exec = zfp_exec_cuda;
+        else if (!strcmp(argv[i], "sycl"))
+            exec = zfp_exec_sycl;
         else
-          usage();
+            usage();
         break;
       case 'z':
         if (++i == argc)
@@ -473,22 +476,29 @@ int main(int argc, char* argv[])
 
   /* specify execution policy */
   switch (exec) {
-    case zfp_exec_cuda:
-      if (!zfp_stream_set_execution(zfp, exec)) {
-        fprintf(stderr, "cuda execution not available\n");
-        return EXIT_FAILURE;
-      }
-      break;
-    case zfp_exec_omp:
-      if (!zfp_stream_set_execution(zfp, exec) ||
-          !zfp_stream_set_omp_threads(zfp, threads) ||
-          !zfp_stream_set_omp_chunk_size(zfp, chunk_size)) {
-        fprintf(stderr, "OpenMP execution not available\n");
-        return EXIT_FAILURE;
-      }
-      break;
-    case zfp_exec_serial:
-    default:
+      case zfp_exec_cuda:
+          if (!zfp_stream_set_execution(zfp, exec)) {
+              fprintf(stderr, "cuda execution not available\n");
+              return EXIT_FAILURE;
+          }
+          break;
+
+      case zfp_exec_sycl:
+          if (!zfp_stream_set_execution(zfp, exec)) {
+              fprintf(stderr, "SYCL execution not available\n");
+              return EXIT_FAILURE;
+          }
+          break;
+      case zfp_exec_omp:
+          if (!zfp_stream_set_execution(zfp, exec) ||
+              !zfp_stream_set_omp_threads(zfp, threads) ||
+              !zfp_stream_set_omp_chunk_size(zfp, chunk_size)) {
+              fprintf(stderr, "OpenMP execution not available\n");
+              return EXIT_FAILURE;
+          }
+          break;
+      case zfp_exec_serial:
+      default:
       if (!zfp_stream_set_execution(zfp, exec)) {
         fprintf(stderr, "serial execution not available\n");
         return EXIT_FAILURE;
