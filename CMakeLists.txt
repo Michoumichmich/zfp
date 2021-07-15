@@ -172,8 +172,14 @@ endif()
 
 if(ZFP_WITH_SYCL)
   set(CMAKE_CXX_STANDARD 17)
-  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-targets=spir64_x86_64-unknown-unknowd-sycldevice -DSYCL_USE_NATIVE_FP_ATOMICS")
+
+
+  #set(DPCPP_FLAGS -fsycl -fsycl-targets=spir64_x86_64-unknown-unknown-sycldevice -DSYCL_USE_NATIVE_FP_ATOMICS)
   set(DPCPP_FLAGS -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Wno-unknown-cuda-version -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -DSYCL_USE_NATIVE_FP_ATOMICS)
+  set(WARNING_FLAGS "-Wall -Wextra -Wshadow -Wdouble-promotion -fno-common -Winit-self -Wuninitialized -Wmissing-declarations -Woverloaded-virtual")
+  set(EXTRA_W_FLAGS "-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-declarations -Wmissing-include-dirs  -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-overflow=5") #-Wnoexcept -Wold-style-cast -Wstrict-null-sentinel -switch-default -Wlogical-op
+  set(DISABLED_WARNINGS "-Wno-c++20-extensions -Wno-inline-namespace-reopened-noninline -Wno-undef -Wno-unused")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${WARNING_FLAGS} ${EXTRA_W_FLAGS} ${DISABLED_WARNINGS} -g -Og -v")
   include(cmake/FindSYCL.cmake)
   include_directories(include)
 endif()

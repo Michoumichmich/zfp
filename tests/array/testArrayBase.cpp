@@ -579,31 +579,30 @@ TEST_F(TEST_FIXTURE, given_uncompatibleSerializedMem_when_factoryFuncConstruct_t
     ZFP_ARRAY_TYPE::header h(dummyMem);
     array* arr = zfp::array::construct(h, dummyMem, dummyLen);
   } catch (zfp::exception const & e) {
-    EXPECT_EQ(e.what(), std::string("zfp header is corrupt"));
-  } catch (std::exception const & e) {
-    FailAndPrintException(e);
+      EXPECT_EQ(e.what(), std::string("zfp header is corrupt"));
+  } catch (std::exception const &e) {
+      FailAndPrintException(e);
   }
 
-  delete[] dummyMem;
+    delete[] dummyMem;
 }
 
 #if DIMS == 1
 // with write random access in 1D, fixed-rate params rounded up to multiples of 16
-INSTANTIATE_TEST_CASE_P(TestManyCompressionRates, TEST_FIXTURE, ::testing::Values(1, 2));
+INSTANTIATE_TEST_SUITE_P(TestManyCompressionRates, TEST_FIXTURE, ::testing::Values(1, 2));
 #else
-INSTANTIATE_TEST_CASE_P(TestManyCompressionRates, TEST_FIXTURE, ::testing::Values(0, 1, 2));
+INSTANTIATE_TEST_SUITE_P(TestManyCompressionRates, TEST_FIXTURE, ::testing::Values(0, 1, 2));
 #endif
 
-TEST_P(TEST_FIXTURE, given_dataset_when_set_then_underlyingBitstreamChecksumMatches)
-{
+TEST_P(TEST_FIXTURE, given_dataset_when_set_then_underlyingBitstreamChecksumMatches) {
 #if DIMS == 1
-  ZFP_ARRAY_TYPE arr(inputDataSideLen, getRate());
+    ZFP_ARRAY_TYPE arr(inputDataSideLen, getRate());
 #elif DIMS == 2
-  ZFP_ARRAY_TYPE arr(inputDataSideLen, inputDataSideLen, getRate());
+    ZFP_ARRAY_TYPE arr(inputDataSideLen, inputDataSideLen, getRate());
 #elif DIMS == 3
-  ZFP_ARRAY_TYPE arr(inputDataSideLen, inputDataSideLen, inputDataSideLen, getRate());
+    ZFP_ARRAY_TYPE arr(inputDataSideLen, inputDataSideLen, inputDataSideLen, getRate());
 #elif DIMS == 4
-  ZFP_ARRAY_TYPE arr(inputDataSideLen, inputDataSideLen, inputDataSideLen, inputDataSideLen, getRate());
+    ZFP_ARRAY_TYPE arr(inputDataSideLen, inputDataSideLen, inputDataSideLen, inputDataSideLen, getRate());
 #endif
 
   uint64 key1, key2;
@@ -706,7 +705,8 @@ void CheckDeepCopyPerformedViaDirtyCache(ZFP_ARRAY_TYPE& arr1, ZFP_ARRAY_TYPE& a
   uint64 arr1UnflushedChecksum = hashBitstream((uint64*)arr1UnflushedBitstreamPtr, arr1.compressed_size());
   EXPECT_PRED_FORMAT2(ExpectNeqPrintHexPred, arr1UnflushedChecksum, checksum);
 
-  // flush arr1, compute its checksum, clear its bitstream, re-compute arr2's checksum
+
+    // flush arr1, compute its checksum, clear its bitstream, re-compute arr2's checksum
   uint64 expectedChecksum = hashBitstream((uint64*)arr1.compressed_data(), arr1.compressed_size());
 
 #if DIMS == 1
