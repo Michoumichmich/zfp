@@ -1,4 +1,4 @@
-set(CMAKE_CXX_STANDARD 11)
+
 
 # CMAKE_SH-NOTFOUND needed for mingw builds
 if(MINGW)

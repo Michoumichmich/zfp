@@ -49,7 +49,7 @@ namespace syclZFP {
     static int exponent(Scalar x) {
         if (x > 0) {
             int e;
-            sycl::frexp(x, &e);
+            FREXP(x, &e);
             // clamp exponent in case x is denormalized
             return sycl::max(e, 1 - get_ebias<Scalar>());
         }
@@ -132,12 +132,12 @@ namespace syclZFP {
 
     template<>
     float inline quantize_factor<float>(const int &exponent, float) {
-        return sycl::ldexp((float) 1.0, get_precision<float>() - 2 - exponent);
+        return LDEXP((float) 1.0, get_precision<float>() - 2 - exponent);
     }
 
     template<>
     double inline quantize_factor<double>(const int &exponent, double) {
-        return sycl::ldexp(1.0, get_precision<double>() - 2 - exponent);
+        return LDEXP(1.0, get_precision<double>() - 2 - exponent);
     }
 
     template<typename Scalar, typename Int, int BlockSize>
@@ -210,10 +210,9 @@ namespace syclZFP {
 
     template<int block_size>
     struct BlockWriter {
-        using memory_order = sycl::ONEAPI::memory_order;
-        using memory_scope = sycl::ONEAPI::memory_scope;
+        //    using memory_order = sycl::ONEAPI::memory_order;
+        //    using memory_scope = sycl::ONEAPI::memory_scope;
         using address_space = sycl::access::address_space;
-
 
         uint m_word_index;
         uint m_start_bit;
@@ -247,8 +246,6 @@ namespace syclZFP {
 
 
         long long unsigned int write_bits(const long long unsigned int &bits, const uint &n_bits) {
-            using sycl::ONEAPI::atomic_ref;
-
             const uint wbits = sizeof(Word) * 8;
             uint seg_start = (m_start_bit + m_current_bit) % wbits;
             uint write_index = m_word_index + uint((m_start_bit + m_current_bit) / wbits);
@@ -263,7 +260,7 @@ namespace syclZFP {
 
             Word b = bits - left;
             Word add = b << shift;
-            atomic_ref<Word, memory_order::relaxed, memory_scope::device, address_space::global_device_space> ref(m_stream[write_index]);
+            ZFP_ENCODE_ATOMIC_REF_TYPE ref(m_stream[write_index]);
             ref += add;
             //   m_stream[write_index] += add;
 
@@ -272,7 +269,7 @@ namespace syclZFP {
 
             //if (straddle) {
             Word rem = b >> (sizeof(Word) * 8 - shift);
-            atomic_ref<Word, memory_order::relaxed, memory_scope::device, address_space::global_device_space> ref_next(m_stream[write_index + 1]);
+            ZFP_ENCODE_ATOMIC_REF_TYPE ref_next(m_stream[write_index + 1]);
             ref_next += straddle * rem;
             //        m_stream[write_index + 1] += rem;
             // }
@@ -281,7 +278,7 @@ namespace syclZFP {
         }
 
         uint write_bit(const unsigned int &bit) {
-            using sycl::ONEAPI::atomic_ref;
+
 
             const uint wbits = sizeof(Word) * 8;
             uint seg_start = (m_start_bit + m_current_bit) % wbits;
@@ -294,7 +291,7 @@ namespace syclZFP {
             // uint zero_shift = sizeof(Word) * 8 - n_bits;
 
             Word add = (Word) bit << shift;
-            atomic_ref<Word, memory_order::relaxed, memory_scope::device, address_space::global_device_space> ref(m_stream[write_index]);
+            ZFP_ENCODE_ATOMIC_REF_TYPE ref(m_stream[write_index]);
             ref += add;
             //m_stream[write_index] += add;
             m_current_bit += 1;

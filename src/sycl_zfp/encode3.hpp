@@ -47,7 +47,9 @@ namespace syclZFP {
             const sycl::id<3> dims,
             const sycl::int3 stride,
             const sycl::id<3> padded_dims,
-            const uint tot_blocks) {
+            const uint tot_blocks
+            //sycl::stream os
+    ) {
 
         typedef unsigned long long int ull;
         typedef long long int ll;
@@ -83,9 +85,11 @@ namespace syclZFP {
             const uint nx = block[2] + 4 > dims[2] ? dims[2] - block[2] : 4;
             const uint ny = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
             const uint nz = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
+            //os << "Partial Block " << block_idx << " offset " << offset << " dims " << dims[0] << " " << dims[1] << " " << dims[2] << '\n' << sycl::flush;
             gather_partial3(fblock, scalars + offset, nx, ny, nz, stride[2], stride[1], stride[0]);
 
         } else {
+            //os << "Not partial Block " << block_idx << " offset " << offset << " dims " << dims[0] << " " << dims[1] << " " << dims[2] << '\n'<< sycl::flush;
             gather3(fblock, scalars + offset, stride[2], stride[1], stride[0]);
         }
         uint bits = zfp_encode_block<Scalar, ZFP_3D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
@@ -139,6 +143,7 @@ namespace syclZFP {
         sycl::nd_range<3> kernel_parameters(grid_size * block_size, block_size);
         q.submit([&](sycl::handler &cgh) {
             cgh.depends_on(init_e);
+            //sycl::stream os(10240, 2000, cgh);
             cgh.parallel_for(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclEncode3<Scalar, variable_rate>
                         (item,
@@ -152,7 +157,9 @@ namespace syclZFP {
                          dims,
                          stride,
                          zfp_pad,
-                         zfp_blocks);
+                         zfp_blocks
+                                //,os
+                        );
 
             });
         }).wait();

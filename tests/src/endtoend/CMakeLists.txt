@@ -57,11 +57,11 @@ function(zfp_add_test dims type bits)
       add_executable(${sycl_test_name} ${sycl_test_name}.c)
       add_sycl_to_target(TARGET ${sycl_test_name})
       target_compile_definitions(${sycl_test_name} PRIVATE ${zfp_private_defs})
-      target_link_libraries(${sycl_test_name}
+      target_link_libraries(${sycl_test_name} PRIVATE
               cmocka zfp zfpHashLib genSmoothRandNumsLib stridedOperationsLib
               zfpChecksumsLib zfpTimerLib zfpCompressionParamsLib)
       if(HAVE_LIBM_MATH)
-        target_link_libraries(${sycl_test_name} m)
+        target_link_libraries(${sycl_test_name} PRIVATE m)
       endif()
       add_test(NAME ${sycl_test_name} COMMAND ${sycl_test_name})
       set_property(TEST ${sycl_test_name} PROPERTY RUN_SERIAL TRUE)

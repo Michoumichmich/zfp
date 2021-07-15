@@ -12,6 +12,17 @@ typedef uint64_t Word;
 #define MIN(x, y) (sycl::min((x),(y)))
 #define bitsize(x) ((uint)(CHAR_BIT * sizeof(x)))
 
+
+#ifdef USING_DPCPP
+#define LDEXP(x, y) sycl::ldexp((x),(y))
+#define FREXP(x, y) sycl::frexp((x),(y))
+#define ZFP_ENCODE_ATOMIC_REF_TYPE sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order::relaxed, sycl::ONEAPI::memory_scope::device, sycl::access::address_space::global_device_space>
+#else
+#define LDEXP(x, y) ldexp((x),(y))
+#define FREXP(x, y) frexp((x),(y))
+#define ZFP_ENCODE_ATOMIC_REF_TYPE sycl::atomic_ref<Word, sycl::memory_order::relaxed, sycl::memory_scope::device, address_space::global_space>
+#endif
+
 #define NBMASK 0xaaaaaaaaaaaaaaaaull
 
 #define ZFP_1D_BLOCK_SIZE 4
@@ -76,7 +87,7 @@ namespace syclZFP {
         return q.get_device().get_info<sycl::info::device::ext_oneapi_max_number_work_groups>();
 #else
 #pragma message "Missing SYCL information descriptor to check the max number of work groups allowed"
-        return {(1<<30)-1, (1<<30)-1, (1<<30)-1};
+        return {(1 << 30) - 1, (1 << 30) - 1, (1 << 30) - 1};
 #endif
     }
 
@@ -155,12 +166,12 @@ namespace syclZFP {
 
     template<>
     double dequantize<int64_t, double>(const int64_t &x, const int &e) {
-        return sycl::ldexp((double) x, e - (int) (CHAR_BIT * scalar_sizeof<double>() - 2));
+        return LDEXP((double) x, e - (int) (CHAR_BIT * scalar_sizeof<double>() - 2));
     }
 
     template<>
     float dequantize<int32_t, float>(const int32_t &x, const int &e) {
-        return sycl::ldexp((float) x, e - (int) (CHAR_BIT * scalar_sizeof<float>() - 2));
+        return LDEXP((float) x, e - (int) (CHAR_BIT * scalar_sizeof<float>() - 2));
     }
 
     template<>

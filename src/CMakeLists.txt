@@ -34,9 +34,9 @@ add_library(zfp ${zfp_source}
                 ${zfp_cuda_backend_obj} )
 
 if(ZFP_WITH_SYCL)
-  add_sycl_to_target(TAREGET zfp)
+  add_sycl_to_target(TARGET zfp)
   target_link_libraries(zfp PRIVATE syclZFP_static_lib)
-  endif()
+endif ()
 
 add_library(zfp::zfp ALIAS zfp)
 
