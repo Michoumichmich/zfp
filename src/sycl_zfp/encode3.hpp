@@ -6,7 +6,7 @@
 namespace syclZFP {
 
     template<typename Scalar>
-    inline void gather_partial3(Scalar *q, const Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
+    inline void gather_partial3(Scalar *q, const Scalar *p, uint nx, uint ny, uint nz, int sx, int sy, int sz) {
         uint x, y, z;
         for (z = 0; z < nz; z++, p += sz - (ptrdiff_t) ny * sy) {
             for (y = 0; y < ny; y++, p += sy - (ptrdiff_t) nx * sx) {
@@ -88,8 +88,7 @@ namespace syclZFP {
         } else {
             gather3(fblock, scalars + offset, stride[2], stride[1], stride[0]);
         }
-        uint bits = zfp_encode_block<Scalar, ZFP_3D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec,
-                                                                minexp, block_idx, stream);
+        uint bits = zfp_encode_block<Scalar, ZFP_3D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
         if (variable_rate)
             block_bits[block_idx] = bits;
     }

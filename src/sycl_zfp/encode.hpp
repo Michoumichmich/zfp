@@ -210,6 +210,11 @@ namespace syclZFP {
 
     template<int block_size>
     struct BlockWriter {
+        using memory_order = sycl::ONEAPI::memory_order;
+        using memory_scope = sycl::ONEAPI::memory_scope;
+        using address_space = sycl::access::address_space;
+
+
         uint m_word_index;
         uint m_start_bit;
         uint m_current_bit;
@@ -220,8 +225,8 @@ namespace syclZFP {
                 : m_current_bit(0),
                   m_maxbits(maxbits),
                   m_stream(stream) {
-            m_word_index = (block_idx * maxbits) / (sizeof(Word) * 8);
-            m_start_bit = uint((block_idx * maxbits) % (sizeof(Word) * 8));
+            m_word_index = (block_idx * (uint) maxbits) / (sizeof(Word) * 8);
+            m_start_bit = uint((block_idx * (uint) maxbits) % (sizeof(Word) * 8));
         }
 
         template<typename T>
@@ -242,6 +247,8 @@ namespace syclZFP {
 
 
         long long unsigned int write_bits(const long long unsigned int &bits, const uint &n_bits) {
+            using sycl::ONEAPI::atomic_ref;
+
             const uint wbits = sizeof(Word) * 8;
             uint seg_start = (m_start_bit + m_current_bit) % wbits;
             uint write_index = m_word_index + uint((m_start_bit + m_current_bit) / wbits);
@@ -256,24 +263,26 @@ namespace syclZFP {
 
             Word b = bits - left;
             Word add = b << shift;
-            sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order_relaxed, sycl::ONEAPI::memory_scope_work_group, sycl::access::address_space::global_space> ref(m_stream[write_index]); //TODO
+            atomic_ref<Word, memory_order::relaxed, memory_scope::device, address_space::global_device_space> ref(m_stream[write_index]);
             ref += add;
-            //m_stream[write_index] += add;
+            //   m_stream[write_index] += add;
 
             // n_bits straddles the word boundary
             bool straddle = seg_start < sizeof(Word) * 8 && seg_end >= sizeof(Word) * 8;
-            if (straddle) {
-                Word rem = b >> (sizeof(Word) * 8 - shift);
-                sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order_relaxed, sycl::ONEAPI::memory_scope_work_group, sycl::access::address_space::global_space> ref_next(
-                        m_stream[write_index + 1]); //TODO
-                ref_next += rem;
-                //m_stream[write_index + 1] += rem;
-            }
+
+            //if (straddle) {
+            Word rem = b >> (sizeof(Word) * 8 - shift);
+            atomic_ref<Word, memory_order::relaxed, memory_scope::device, address_space::global_device_space> ref_next(m_stream[write_index + 1]);
+            ref_next += straddle * rem;
+            //        m_stream[write_index + 1] += rem;
+            // }
             m_current_bit += n_bits;
             return bits >> (Word) n_bits;
         }
 
         uint write_bit(const unsigned int &bit) {
+            using sycl::ONEAPI::atomic_ref;
+
             const uint wbits = sizeof(Word) * 8;
             uint seg_start = (m_start_bit + m_current_bit) % wbits;
             uint write_index = m_word_index + uint((m_start_bit + m_current_bit) / wbits);
@@ -285,7 +294,7 @@ namespace syclZFP {
             // uint zero_shift = sizeof(Word) * 8 - n_bits;
 
             Word add = (Word) bit << shift;
-            sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order_relaxed, sycl::ONEAPI::memory_scope_work_group, sycl::access::address_space::global_space> ref(m_stream[write_index]); //TODO
+            atomic_ref<Word, memory_order::relaxed, memory_scope::device, address_space::global_device_space> ref(m_stream[write_index]);
             ref += add;
             //m_stream[write_index] += add;
             m_current_bit += 1;
@@ -313,7 +322,7 @@ namespace syclZFP {
 
         // encode integer coefficients
         uint intprec = (uint) (CHAR_BIT * sizeof(UInt));
-        uint kmin = intprec > maxprec ? intprec - maxprec : 0;
+        uint kmin = intprec > (uint) maxprec ? intprec - (uint) maxprec : 0;
         uint bits = maxbits;
 
         for (uint k = intprec, n = 0; bits && k-- > kmin;) {
@@ -363,8 +372,8 @@ namespace syclZFP {
     }
 
     template<>
-    uint inline zfp_encode_block<int, 64>(
-            int *fblock,
+    uint inline zfp_encode_block<int32_t, 64>(
+            int32_t *fblock,
             const int minbits,
             const int maxbits,
             int maxprec,
@@ -372,15 +381,15 @@ namespace syclZFP {
             const uint block_idx,
             Word *stream) {
         BlockWriter<64> block_writer(stream, maxbits, block_idx);
-        const int intprec = get_precision<int>();
-        uint bits = encode_block<int, 64>(block_writer, maxbits, intprec, fblock);
+        const int intprec = get_precision<int32_t>();
+        uint bits = encode_block<int32_t, 64>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, (uint) minbits);
     }
 
 
     template<>
-    uint inline zfp_encode_block<long long int, 64>(
-            long long int *fblock,
+    uint inline zfp_encode_block<int64_t, 64>(
+            int64_t *fblock,
             const int minbits,
             const int maxbits,
             int maxprec,
@@ -388,14 +397,14 @@ namespace syclZFP {
             const uint block_idx,
             Word *stream) {
         BlockWriter<64> block_writer(stream, maxbits, block_idx);
-        const int intprec = get_precision<long long int>();
-        uint bits = encode_block<long long int, 64>(block_writer, maxbits, intprec, fblock);
+        const int intprec = get_precision<int64_t>();
+        uint bits = encode_block<int64_t, 64>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, (uint) minbits);
     }
 
 
     template<>
-    uint inline zfp_encode_block<int, 16>(
+    uint inline zfp_encode_block<int32_t, 16>(
             int *fblock,
             const int minbits,
             const int maxbits,
@@ -404,14 +413,14 @@ namespace syclZFP {
             const uint block_idx,
             Word *stream) {
         BlockWriter<16> block_writer(stream, maxbits, block_idx);
-        const int intprec = get_precision<int>();
-        uint bits = encode_block<int, 16>(block_writer, maxbits, intprec, fblock);
+        const int intprec = get_precision<int32_t>();
+        uint bits = encode_block<int32_t, 16>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, (uint) minbits);
     }
 
     template<>
-    uint inline zfp_encode_block<long long int, 16>(
-            long long int *fblock,
+    uint inline zfp_encode_block<int64_t, 16>(
+            int64_t *fblock,
             const int minbits,
             const int maxbits,
             int maxprec,
@@ -419,13 +428,13 @@ namespace syclZFP {
             const uint block_idx,
             Word *stream) {
         BlockWriter<16> block_writer(stream, maxbits, block_idx);
-        const int intprec = get_precision<long long int>();
-        uint bits = encode_block<long long int, 16>(block_writer, maxbits, intprec, fblock);
+        const int intprec = get_precision<int64_t>();
+        uint bits = encode_block<int64_t, 16>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, (uint) minbits);
     }
 
     template<>
-    uint inline zfp_encode_block<int, 4>(
+    uint inline zfp_encode_block<int32_t, 4>(
             int *fblock,
             const int minbits,
             const int maxbits,
@@ -434,14 +443,14 @@ namespace syclZFP {
             const uint block_idx,
             Word *stream) {
         BlockWriter<4> block_writer(stream, maxbits, block_idx);
-        const int intprec = get_precision<int>();
-        uint bits = encode_block<int, 4>(block_writer, maxbits, intprec, fblock);
+        const int intprec = get_precision<int32_t>();
+        uint bits = encode_block<int32_t, 4>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, (uint) minbits);
     }
 
     template<>
-    uint inline zfp_encode_block<long long int, 4>(
-            long long int *fblock,
+    uint inline zfp_encode_block<int64_t, 4>(
+            int64_t *fblock,
             const int minbits,
             const int maxbits,
             int maxprec,
@@ -449,8 +458,8 @@ namespace syclZFP {
             const uint block_idx,
             Word *stream) {
         BlockWriter<4> block_writer(stream, maxbits, block_idx);
-        const int intprec = get_precision<long long int>();
-        uint bits = encode_block<long long int, 4>(block_writer, maxbits, intprec, fblock);
+        const int intprec = get_precision<int64_t>();
+        uint bits = encode_block<int64_t, 4>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, (uint) minbits);
     }
 

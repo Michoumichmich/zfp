@@ -7,7 +7,7 @@ namespace syclZFP {
 
     template<typename Scalar>
     inline void scatter_partial3(const Scalar *q, Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
-        uint x, y, z;
+        int x, y, z;
         for (z = 0; z < nz; z++, p += sz - (ptrdiff_t) ny * sy, q += 4 * (4 - ny))
             for (y = 0; y < ny; y++, p += sy - (ptrdiff_t) nx * sx, q += 1 * (4 - nx))
                 for (x = 0; x < nx; x++, p += sx, q++)

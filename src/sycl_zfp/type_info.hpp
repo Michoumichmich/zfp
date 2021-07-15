@@ -12,10 +12,10 @@ namespace syclZFP {
     inline int get_ebias<float>() { return 127; }
 
     template<>
-    inline int get_ebias<long long int>() { return 0; }
+    inline int get_ebias<int64_t>() { return 0; }
 
     template<>
-    inline int get_ebias<int>() { return 0; }
+    inline int get_ebias<int32_t>() { return 0; }
 
     template<typename T>
     inline int get_ebits();
@@ -27,10 +27,10 @@ namespace syclZFP {
     inline int get_ebits<float>() { return 8; }
 
     template<>
-    inline int get_ebits<int>() { return 0; }
+    inline int get_ebits<int32_t>() { return 0; }
 
     template<>
-    inline int get_ebits<long long int>() { return 0; }
+    inline int get_ebits<int64_t>() { return 0; }
 
     template<typename T>
     inline int get_precision();
@@ -39,13 +39,13 @@ namespace syclZFP {
     inline int get_precision<double>() { return 64; }
 
     template<>
-    inline int get_precision<long long int>() { return 64; }
+    inline int get_precision<int64_t>() { return 64; }
 
     template<>
     inline int get_precision<float>() { return 32; }
 
     template<>
-    inline int get_precision<int>() { return 32; }
+    inline int get_precision<int32_t>() { return 32; }
 
     template<typename T>
     inline int get_min_exp();
@@ -57,10 +57,10 @@ namespace syclZFP {
     inline int get_min_exp<float>() { return -1074; }
 
     template<>
-    inline int get_min_exp<long long int>() { return 0; }
+    inline int get_min_exp<int64_t>() { return 0; }
 
     template<>
-    inline int get_min_exp<int>() { return 0; }
+    inline int get_min_exp<int32_t>() { return 0; }
 
     template<typename T>
     inline int scalar_sizeof();
@@ -69,39 +69,39 @@ namespace syclZFP {
     inline int scalar_sizeof<double>() { return 8; }
 
     template<>
-    inline int scalar_sizeof<long long int>() { return 8; }
+    inline int scalar_sizeof<int64_t>() { return 8; }
 
     template<>
     inline int scalar_sizeof<float>() { return 4; }
 
     template<>
-    inline int scalar_sizeof<int>() { return 4; }
+    inline int scalar_sizeof<int32_t>() { return 4; }
 
     template<typename T>
     struct zfp_traits;
 
     template<>
     struct zfp_traits<double> {
-        typedef unsigned long long int UInt;
-        typedef long long int Int;
+        typedef uint64_t UInt;
+        typedef int64_t Int;
     };
 
     template<>
-    struct zfp_traits<long long int> {
-        typedef unsigned long long int UInt;
-        typedef long long int Int;
+    struct zfp_traits<int64_t> {
+        typedef uint64_t UInt;
+        typedef int64_t Int;
     };
 
     template<>
     struct zfp_traits<float> {
-        typedef unsigned int UInt;
-        typedef int Int;
+        typedef uint32_t UInt;
+        typedef int32_t Int;
     };
 
     template<>
-    struct zfp_traits<int> {
-        typedef unsigned int UInt;
-        typedef int Int;
+    struct zfp_traits<int32_t> {
+        typedef uint32_t UInt;
+        typedef int32_t Int;
     };
 
     template<typename T>
@@ -110,12 +110,12 @@ namespace syclZFP {
     }
 
     template<>
-    inline bool is_int<int>() {
+    inline bool is_int<int32_t>() {
         return true;
     }
 
     template<>
-    inline bool is_int<long long int>() {
+    inline bool is_int<int64_t>() {
         return true;
     }
 
@@ -137,10 +137,10 @@ namespace syclZFP {
     inline T get_nbmask();
 
     template<>
-    inline unsigned int get_nbmask<unsigned int>() { return 0xaaaaaaaau; }
+    inline uint32_t get_nbmask<uint32_t>() { return 0xaaaaaaaau; }
 
     template<>
-    inline unsigned long long int get_nbmask<unsigned long long int>() { return 0xaaaaaaaaaaaaaaaaull; }
+    inline uint64_t get_nbmask<uint64_t>() { return 0xaaaaaaaaaaaaaaaaull; }
 
 
 }

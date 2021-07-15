@@ -22,12 +22,12 @@ namespace syclZFP {
 #endif
 
 /* map two's complement signed integer to negabinary unsigned integer */
-    inline long long int uint2int(unsigned long long int x) {
-        return (x ^ get_nbmask<unsigned long long int>()) - get_nbmask<unsigned long long int>();
+    inline int64_t uint2int(uint64_t x) {
+        return (x ^ get_nbmask<uint64_t>()) - get_nbmask<uint64_t>();
     }
 
-    inline int uint2int(unsigned int x) {
-        return (x ^ get_nbmask<unsigned int>()) - get_nbmask<unsigned int>();
+    inline int32_t uint2int(uint32_t x) {
+        return (x ^ get_nbmask<uint32_t>()) - get_nbmask<uint32_t>();
     }
 
 
@@ -164,7 +164,7 @@ namespace syclZFP {
     struct inv_transform<64> {
         template<typename Int>
         void inv_xform(Int *p) {
-            uint x, y, z;
+            int x, y, z;
             /* transform along z */
             for (y = 0; y < 4; y++)
                 for (x = 0; x < 4; x++)

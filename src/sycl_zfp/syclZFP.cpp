@@ -248,9 +248,7 @@ namespace internal {
         return offset_void(field->type, d_data, -offset);
     }
 
-    void *setup_device_field_decompress(sycl::queue &q, const zfp_field *field,
-                                        const sycl::int3 &stride,
-                                        long long int &offset) {
+    void *setup_device_field_decompress(sycl::queue &q, const zfp_field *field, const sycl::int3 &stride, long long int &offset) {
         bool field_device = syclZFP::queue_can_access_ptr(q, field->data);
 
         if (field_device) {
@@ -374,7 +372,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
         // Reversible mode not supported on GPU
         return 0;
     }
-    sycl::queue q{sycl::gpu_selector{}};
+    sycl::queue q{sycl::cpu_selector{}};
 
 #ifdef VERBOSE_SYCL
     std::cout << "Compressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
@@ -431,21 +429,21 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
             stream_bytes = internal::encode<double, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
                                                            (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
     } else if (field->type == zfp_type_int32) {
-        int *data = (int *) d_data;
+        auto *data = (int32_t *) d_data;
         if (variable_rate)
-            stream_bytes = internal::encode<int, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                       (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<int32_t, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
+                                                           (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
         else
-            stream_bytes = internal::encode<int, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                        (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<int32_t, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
+                                                            (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
     } else if (field->type == zfp_type_int64) {
-        auto *data = (long long int *) d_data;
+        auto *data = (int64_t *) d_data;
         if (variable_rate)
-            stream_bytes = internal::encode<long long int, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                                 (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<int64_t, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
+                                                           (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
         else
-            stream_bytes = internal::encode<long long int, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                                  (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<int64_t, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
+                                                            (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
     }
 
 #ifdef HAS_VARIABLE
@@ -497,7 +495,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
 }
 
 void sycl_decompress(zfp_stream *stream, zfp_field *field) {
-    sycl::queue q{sycl::gpu_selector{}};
+    sycl::queue q{sycl::cpu_selector{}};
 #ifdef VERBOSE_SYCL
     std::cout << "Decompressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
 #endif
@@ -527,19 +525,19 @@ void sycl_decompress(zfp_stream *stream, zfp_field *field) {
 
     if (field->type == zfp_type_float) {
         auto *data = (float *) d_data;
-        decoded_bytes = internal::decode(q, dims, stride, (int) stream->maxbits, d_stream, data);
+        decoded_bytes = internal::decode<float>(q, dims, stride, (int) stream->maxbits, d_stream, data);
         d_data = (void *) data;
     } else if (field->type == zfp_type_double) {
         auto *data = (double *) d_data;
-        decoded_bytes = internal::decode(q, dims, stride, (int) stream->maxbits, d_stream, data);
+        decoded_bytes = internal::decode<double>(q, dims, stride, (int) stream->maxbits, d_stream, data);
         d_data = (void *) data;
     } else if (field->type == zfp_type_int32) {
-        int *data = (int *) d_data;
-        decoded_bytes = internal::decode(q, dims, stride, (int) stream->maxbits, d_stream, data);
+        auto *data = (int32_t *) d_data;
+        decoded_bytes = internal::decode<int32_t>(q, dims, stride, (int) stream->maxbits, d_stream, data);
         d_data = (void *) data;
     } else if (field->type == zfp_type_int64) {
-        auto *data = (long long int *) d_data;
-        decoded_bytes = internal::decode(q, dims, stride, (int) stream->maxbits, d_stream, data);
+        auto *data = (int64_t *) d_data;
+        decoded_bytes = internal::decode<int64_t>(q, dims, stride, (int) stream->maxbits, d_stream, data);
         d_data = (void *) data;
     } else {
         std::cerr << "Cannot decompress: type unknown\n";

@@ -1,6 +1,6 @@
 #pragma once
 
-typedef unsigned long long Word;
+typedef uint64_t Word;
 #define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
 
 #include "syclZFP.h"
@@ -141,12 +141,12 @@ namespace syclZFP {
 
 
 // map two's complement signed integer to negabinary unsigned integer
-    inline unsigned long long int int2uint(const long long int x) {
-        return (x + get_nbmask<unsigned long long int>() ^ get_nbmask<unsigned long long int>());
+    inline uint64_t int2uint(const int64_t x) {
+        return (x + get_nbmask<uint64_t>() ^ get_nbmask<uint64_t>());
     }
 
-    inline unsigned int int2uint(const int x) {
-        return (x + get_nbmask<unsigned int>() ^ get_nbmask<unsigned int>());
+    inline uint32_t int2uint(const int32_t x) {
+        return (x + get_nbmask<uint32_t>() ^ get_nbmask<uint32_t>());
     }
 
 
@@ -154,22 +154,22 @@ namespace syclZFP {
     Scalar dequantize(const Int &x, const int &e);
 
     template<>
-    double dequantize<long long int, double>(const long long int &x, const int &e) {
+    double dequantize<int64_t, double>(const int64_t &x, const int &e) {
         return sycl::ldexp((double) x, e - (int) (CHAR_BIT * scalar_sizeof<double>() - 2));
     }
 
     template<>
-    float dequantize<int, float>(const int &x, const int &e) {
+    float dequantize<int32_t, float>(const int32_t &x, const int &e) {
         return sycl::ldexp((float) x, e - (int) (CHAR_BIT * scalar_sizeof<float>() - 2));
     }
 
     template<>
-    int dequantize<int, int>(const int &x, const int &e) {
+    int32_t dequantize<int32_t, int32_t>(const int32_t &x, const int &e) {
         return 1;
     }
 
     template<>
-    long long int dequantize<long long int, long long int>(const long long int &x, const int &e) {
+    int64_t dequantize<int64_t, int64_t>(const int64_t &x, const int &e) {
         return 1;
     }
 
@@ -220,20 +220,20 @@ namespace syclZFP {
 
 
     template<int BlockSize>
-    inline const unsigned char *get_perm();
+    inline const uchar *get_perm();
 
     template<>
-    inline const unsigned char *get_perm<64>() {
+    inline const uchar *get_perm<64>() {
         return perm_3d;
     }
 
     template<>
-    inline const unsigned char *get_perm<16>() {
+    inline const uchar *get_perm<16>() {
         return perm_2;
     }
 
     template<>
-    inline const unsigned char *get_perm<4>() {
+    inline const uchar *get_perm<4>() {
         return perm_1;
     }
 
