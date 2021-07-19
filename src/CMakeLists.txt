@@ -36,6 +36,7 @@ add_library(zfp ${zfp_source}
 if(ZFP_WITH_SYCL)
   add_sycl_to_target(TARGET zfp)
   target_link_libraries(zfp PRIVATE syclZFP_static_lib)
+  #target_link_libraries(zfp PRIVATE stdc++fs)
 endif ()
 
 add_library(zfp::zfp ALIAS zfp)

@@ -132,7 +132,7 @@ _t2(compress_strided_omp, Scalar, 2)(zfp_stream* stream, const zfp_field* field)
     /* compress sequence of blocks */
     for (block = bmin; block < bmax; block++) {
       /* determine block origin (x, y) within array */
-      const Scalar* p = data;
+      const Scalar* p = (Scalar*) data;
       size_t b = block;
       size_t x, y;
       x = 4 * (b % bx); b /= bx;
@@ -190,7 +190,7 @@ _t2(compress_strided_omp, Scalar, 3)(zfp_stream* stream, const zfp_field* field)
     /* compress sequence of blocks */
     for (block = bmin; block < bmax; block++) {
       /* determine block origin (x, y, z) within array */
-      const Scalar* p = data;
+      const Scalar* p = (Scalar*) data;
       size_t b = block;
       size_t x, y, z;
       x = 4 * (b % bx); b /= bx;
@@ -214,7 +214,7 @@ static void
 _t2(compress_strided_omp, Scalar, 4)(zfp_stream* stream, const zfp_field* field)
 {
   /* array metadata */
-  const Scalar* data = field->data;
+  const Scalar* data = (Scalar*) field->data;
   size_t nx = field->nx;
   size_t ny = field->ny;
   size_t nz = field->nz;
@@ -252,7 +252,7 @@ _t2(compress_strided_omp, Scalar, 4)(zfp_stream* stream, const zfp_field* field)
     /* compress sequence of blocks */
     for (block = bmin; block < bmax; block++) {
       /* determine block origin (x, y, z, w) within array */
-      const Scalar* p = data;
+      const Scalar* p = (Scalar*) data;
       size_t b = block;
       size_t x, y, z, w;
       x = 4 * (b % bx); b /= bx;

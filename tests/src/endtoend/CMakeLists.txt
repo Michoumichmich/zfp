@@ -55,7 +55,7 @@ function(zfp_add_test dims type bits)
 
       set(sycl_test_name testZfpSYCL${dims}d${type})
       add_executable(${sycl_test_name} ${sycl_test_name}.c)
-      add_sycl_to_target(TARGET ${sycl_test_name})
+      #add_sycl_to_target(TARGET ${sycl_test_name})
       target_compile_definitions(${sycl_test_name} PRIVATE ${zfp_private_defs})
       target_link_libraries(${sycl_test_name} PRIVATE
               cmocka zfp zfpHashLib genSmoothRandNumsLib stridedOperationsLib

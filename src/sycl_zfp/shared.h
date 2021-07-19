@@ -1,12 +1,15 @@
 #pragma once
 
-typedef uint64_t Word;
-#define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
-
 #include "syclZFP.h"
 #include <sycl/sycl.hpp>
 #include "type_info.hpp"
 #include "constants.h"
+
+
+
+typedef uint64_t Word;
+#define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
+
 
 #define MAX(x, y) (sycl::max((x), (y)))
 #define MIN(x, y) (sycl::min((x),(y)))

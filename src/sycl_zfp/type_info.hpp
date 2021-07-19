@@ -1,5 +1,9 @@
 #pragma once
 
+#include <sycl/sycl.hpp>
+#include <cstdint>
+#include <limits>
+
 namespace syclZFP {
 
     template<typename T>

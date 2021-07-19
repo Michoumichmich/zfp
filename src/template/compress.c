@@ -18,7 +18,7 @@ _t2(compress, Scalar, 1)(zfp_stream* stream, const zfp_field* field)
 static void
 _t2(compress_strided, Scalar, 1)(zfp_stream* stream, const zfp_field* field)
 {
-  const Scalar* data = field->data;
+  const Scalar* data = (Scalar*) field->data;
   uint nx = field->nx;
   int sx = field->sx ? field->sx : 1;
   uint x;
@@ -84,7 +84,7 @@ _t2(compress_strided, Scalar, 3)(zfp_stream* stream, const zfp_field* field)
 static void
 _t2(compress_strided, Scalar, 4)(zfp_stream* stream, const zfp_field* field)
 {
-  const Scalar* data = field->data;
+    const Scalar* data = (Scalar*) field->data;
   uint nx = field->nx;
   uint ny = field->ny;
   uint nz = field->nz;

@@ -54,7 +54,7 @@ if(MSVC)
 endif()
 
 # Suggest C99
-if(NOT CMAKE_C_STANDARD)
+if(NOT CMAKE_C_STANDARD AND NOT ZFP_WITH_SYCL)
   set(CMAKE_C_STANDARD 99)
 endif()
 
@@ -65,7 +65,7 @@ endif()
 message(STATUS "Compiling with C standard: ${CMAKE_C_STANDARD}")
 
 # Suggest C++98
-if(NOT CMAKE_CXX_STANDARD)
+if(NOT CMAKE_CXX_STANDARD AND NOT ZFP_WITH_SYCL)
   set(CMAKE_CXX_STANDARD 98)
 endif()
 message(STATUS "Compiling with C++ standard: ${CMAKE_CXX_STANDARD}")
