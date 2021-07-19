@@ -9,3 +9,4 @@ zfpy.egg-info
 
 /cmake-build-debug/
 /cmake-build-release/
+.vscode/settings.json
