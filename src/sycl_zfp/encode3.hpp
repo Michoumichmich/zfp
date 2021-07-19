@@ -6,10 +6,10 @@
 namespace syclZFP {
 
     template<typename Scalar>
-    inline void gather_partial3(Scalar *q, const Scalar *p, uint nx, uint ny, uint nz, int sx, int sy, int sz) {
-        uint x, y, z;
-        for (z = 0; z < nz; z++, p += sz - (ptrdiff_t) ny * sy) {
-            for (y = 0; y < ny; y++, p += sy - (ptrdiff_t) nx * sx) {
+    inline void gather_partial3(Scalar *q, const Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
+        int x, y, z;
+        for (z = 0; z < nz; z++, p += sz -  ny * sy) {
+            for (y = 0; y < ny; y++, p += sy -  nx * sx) {
                 for (x = 0; x < nx; x++, p += sx) {
                     q[16 * z + 4 * y + x] = *p;
                 }
@@ -27,7 +27,7 @@ namespace syclZFP {
 
     template<typename Scalar>
     inline void gather3(Scalar *q, const Scalar *p, int sx, int sy, int sz) {
-        uint x, y, z;
+        int x, y, z;
         for (z = 0; z < 4; z++, p += sz - 4 * sy)
             for (y = 0; y < 4; y++, p += sy - 4 * sx)
                 for (x = 0; x < 4; x++, p += sx)
@@ -51,9 +51,8 @@ namespace syclZFP {
             //sycl::stream os
     ) {
 
-        typedef unsigned long long int ull;
         typedef long long int ll;
-        const ull block_idx = item.get_global_linear_id();
+        const size_t block_idx = item.get_global_linear_id();
 
         if (block_idx >= tot_blocks) {
             // we can't launch the exact number of blocks
@@ -82,9 +81,9 @@ namespace syclZFP {
         if (block[0] + 4 > dims[0]) partial = true;
 
         if (partial) {
-            const uint nx = block[2] + 4 > dims[2] ? dims[2] - block[2] : 4;
-            const uint ny = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
-            const uint nz = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
+            const int nx = block[2] + 4 > dims[2] ? dims[2] - block[2] : 4;
+            const int ny = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
+            const int nz = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
             //os << "Partial Block " << block_idx << " offset " << offset << " dims " << dims[0] << " " << dims[1] << " " << dims[2] << '\n' << sycl::flush;
             gather_partial3(fblock, scalars + offset, nx, ny, nz, stride[2], stride[1], stride[0]);
 
@@ -168,10 +167,10 @@ namespace syclZFP {
 #ifdef SYCL_ZFP_RATE_PRINT
         auto after = std::chrono::steady_clock::now();
         auto seconds = std::chrono::duration<double>(after - before).count();
-        float rate = (float(dims[2] * dims[1] * dims[0]) * sizeof(Scalar)) / seconds;
-        rate /= 1024.f;
-        rate /= 1024.f;
-        rate /= 1024.f;
+        double rate = (double(dims[2] * dims[1] * dims[0]) * sizeof(Scalar)) / seconds;
+        rate /= 1024.;
+        rate /= 1024.;
+        rate /= 1024.;
         printf("Encode elapsed time: %.5f (s)\n", seconds);
         printf("# encode3 rate: %.2f (GB / sec) \n", rate);
 #endif

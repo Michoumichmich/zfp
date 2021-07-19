@@ -9,15 +9,13 @@ namespace syclZFP {
 
     template<typename Scalar>
     inline void gather_partial1(Scalar *q, const Scalar *p, int nx, int sx) {
-        uint x;
-        for (x = 0; x < nx; x++, p += sx) { q[x] = *p; }
+        for (int x = 0; x < nx; x++, p += sx) { q[x] = *p; }
         pad_block(q, nx, 1);
     }
 
     template<typename Scalar>
     inline void gather1(Scalar *q, const Scalar *p, int sx) {
-        uint x;
-        for (x = 0; x < 4; x++, p += sx) { *q++ = *p; }
+        for (int x = 0; x < 4; x++, p += sx) { *q++ = *p; }
     }
 
     template<class Scalar, bool variable_rate>
@@ -35,9 +33,8 @@ namespace syclZFP {
             const uint padded_dim,
             const uint tot_blocks) {
 
-        typedef unsigned long long int ull;
         typedef long long int ll;
-        const ull block_idx = item.get_global_linear_id();
+        const size_t block_idx = item.get_global_linear_id();
 
         if (block_idx >= tot_blocks) {
             // we can't launch the exact number of blocks

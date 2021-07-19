@@ -78,8 +78,8 @@ namespace syclZFP {
 
 
         // note this assumes that n_bits is <= 64
-        inline uint64 read_bits(const uint &n_bits) {
-            uint64 bits;
+        inline size_t read_bits(const uint &n_bits) {
+            size_t bits;
             // rem bits will always be positive
             int rem_bits = sizeof(Word) * 8 - m_current_bit;
 
@@ -111,7 +111,7 @@ namespace syclZFP {
 
     template<typename Scalar, int Size, typename UInt>
     inline void decode_ints(BlockReader<Size> &reader, uint &maxbits, UInt *data) {
-        const int intprec = get_precision<Scalar>();
+        const uint intprec = (uint) get_precision<Scalar>();
         // maxprec = 64;
         const uint kmin = 0; //= intprec > maxprec ? intprec - maxprec : 0;
         uint bits = maxbits;
@@ -219,11 +219,11 @@ namespace syclZFP {
         }
 
         if (s_cont) {
-            uint ebits = get_ebits<Scalar>() + 1;
+            uint ebits = (uint) get_ebits<Scalar>() + 1u;
             uint emax;
             if (!is_int<Scalar>()) {
                 // read in the shared exponent
-                emax = reader.read_bits(ebits - 1) - get_ebias<Scalar>();
+                emax = reader.read_bits(ebits - 1) - (uint) get_ebias<Scalar>();
             } else {
                 // no exponent bits
                 ebits = 0;

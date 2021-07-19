@@ -6,17 +6,17 @@
 namespace syclZFP {
 
     template<typename Scalar>
-    inline void scatter_partial3(const Scalar *q, Scalar *p, uint nx, uint ny, uint nz, int sx, int sy, int sz) {
-        uint x, y, z;
-        for (z = 0; z < nz; z++, p += sz - (ptrdiff_t) ny * sy, q += 4 * (4 - ny))
-            for (y = 0; y < ny; y++, p += sy - (ptrdiff_t) nx * sx, q += 1 * (4 - nx))
+    inline void scatter_partial3(const Scalar *q, Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
+        int x, y, z;
+        for (z = 0; z < nz; z++, p += sz - ny * sy, q += 4 * (4 - ny))
+            for (y = 0; y < ny; y++, p += sy - nx * sx, q += 1 * (4 - nx))
                 for (x = 0; x < nx; x++, p += sx, q++)
                     *p = *q;
     }
 
     template<typename Scalar>
     inline void scatter3(const Scalar *q, Scalar *p, int sx, int sy, int sz) {
-        uint x, y, z;
+        int x, y, z;
         for (z = 0; z < 4; z++, p += sz - 4 * sy)
             for (y = 0; y < 4; y++, p += sy - 4 * sx)
                 for (x = 0; x < 4; x++, p += sx)
@@ -128,10 +128,10 @@ namespace syclZFP {
 #ifdef SYCL_ZFP_RATE_PRINT
         auto after = std::chrono::steady_clock::now();
         auto seconds = std::chrono::duration<double>(after - before).count();
-        float rate = (float(dims[2] * dims[1] * dims[0]) * sizeof(Scalar)) / seconds;
-        rate /= 1024.f;
-        rate /= 1024.f;
-        rate /= 1024.f;
+        double rate = (double(dims[2] * dims[1] * dims[0]) * sizeof(Scalar)) / seconds;
+        rate /= 1024.;
+        rate /= 1024.;
+        rate /= 1024.;
         printf("Decode elapsed time: %.5f (s)\n", seconds);
         printf("# decode3 rate: %.2f (GB / sec) %d\n", rate, maxbits);
 #endif

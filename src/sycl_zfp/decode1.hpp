@@ -8,7 +8,7 @@ namespace syclZFP {
 
     template<typename Scalar>
     inline void scatter_partial1(const Scalar *q, Scalar *p, int nx, int sx) {
-        uint x;
+        int x;
         for (x = 0; x < nx; x++, p += sx)
             *p = *q++;
     }
@@ -17,7 +17,7 @@ namespace syclZFP {
 
 
     inline void scatter1(const Scalar *q, Scalar *p, int sx) {
-        uint x;
+        int x;
         for (x = 0; x < 4; x++, p += sx)
             *p = *q++;
     }
@@ -112,10 +112,10 @@ namespace syclZFP {
 #ifdef SYCL_ZFP_RATE_PRINT
         auto after = std::chrono::steady_clock::now();
         auto seconds = std::chrono::duration<double>(after - before).count();
-        float rate = (float(dim) * sizeof(Scalar)) / seconds;
-        rate /= 1024.f;
-        rate /= 1024.f;
-        rate /= 1024.f;
+        double rate = (double(dim) * sizeof(Scalar)) / seconds;
+        rate /= 1024.;
+        rate /= 1024.;
+        rate /= 1024.;
         printf("Decode elapsed time: %.5f (s)\n", seconds);
         printf("# decode1 rate: %.2f (GB / sec) %d\n", rate, maxbits);
 #endif
@@ -123,7 +123,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode1(sycl::queue &q, int dim,
+    size_t decode1(sycl::queue &q, uint dim,
                    int stride,
                    Word *stream,
                    Scalar *d_data,

@@ -6,7 +6,6 @@
 #include "constants.h"
 
 
-
 typedef uint64_t Word;
 #define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
 
@@ -117,27 +116,27 @@ namespace syclZFP {
             double sq_r = std::sqrt(grids);
             double intpart = 0;
             modf(sq_r, &intpart);
-            uint base = (uint) intpart;
+            auto base = (size_t) intpart;
             grid_size[2] = base;
             grid_size[1] = base;
             // figure out how many y to add
-            uint rem = (size - base * base);
-            uint y_rows = rem / base;
+            size_t rem = (size - base * base);
+            size_t y_rows = rem / base;
             if (rem % base != 0) y_rows++;
             grid_size[1] += y_rows;
         }
 
         if (dims == 3) {
-            double cub_r = pow((double) grids, 1.f / 3.f);
+            double cub_r = pow((double) grids, 1. / 3.);
             double intpart = 0;
             modf(cub_r, &intpart);
-            uint base = (uint) intpart;
+            auto base = (size_t) intpart;
             grid_size[2] = base;
             grid_size[1] = base;
             grid_size[0] = base;
             // figure out how many z to add
-            uint rem = (size - base * base * base);
-            uint z_rows = rem / (base * base);
+            size_t rem = (size - base * base * base);
+            size_t z_rows = rem / (base * base);
             if (rem % (base * base) != 0) z_rows++;
             grid_size[0] += z_rows;
         }
@@ -156,11 +155,11 @@ namespace syclZFP {
 
 // map two's complement signed integer to negabinary unsigned integer
     inline uint64_t int2uint(const int64_t x) {
-        return (x + get_nbmask<uint64_t>() ^ get_nbmask<uint64_t>());
+        return ((uint64_t) x + get_nbmask<uint64_t>() ^ get_nbmask<uint64_t>());
     }
 
     inline uint32_t int2uint(const int32_t x) {
-        return (x + get_nbmask<uint32_t>() ^ get_nbmask<uint32_t>());
+        return ((uint32_t) x + get_nbmask<uint32_t>() ^ get_nbmask<uint32_t>());
     }
 
 
@@ -188,7 +187,7 @@ namespace syclZFP {
     }
 
 /* inverse lifting transform of 4-vector */
-    template<class Int, uint s>
+    template<class Int, int s>
     static void inv_lift(Int *p) {
         Int x, y, z, w;
         x = *p;

@@ -147,11 +147,11 @@ namespace internal {
         if (d == 3) {
             sycl::uint3 dims(ndims[0], ndims[1], ndims[2]);
             sycl::int3 s(stride);
-            stream_bytes = syclZFP::decode3<T>(q, dims, s, stream, out, bits_per_block);
+            stream_bytes = syclZFP::decode3<T>(q, dims, s, stream, out, (uint) bits_per_block);
         } else if (d == 1) {
             uint dim = ndims[2];
             int sx = stride[2];
-            stream_bytes = syclZFP::decode1<T>(q, dim, sx, stream, out, bits_per_block);
+            stream_bytes = syclZFP::decode1<T>(q, dim, sx, stream, out, (uint) bits_per_block);
         } else if (d == 2) {
             sycl::uint2 dims;
             dims[1] = ndims[2];
@@ -161,7 +161,7 @@ namespace internal {
             s[1] = stride[2];
             s[0] = stride[1];
 
-            stream_bytes = syclZFP::decode2<T>(q, dims, s, stream, out, bits_per_block);
+            stream_bytes = syclZFP::decode2<T>(q, dims, s, stream, out, (uint) bits_per_block);
         } else std::cerr << " d ==  " << d << " not implemented\n";
 
         return stream_bytes;

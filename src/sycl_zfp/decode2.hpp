@@ -114,10 +114,10 @@ namespace syclZFP {
 #ifdef SYCL_ZFP_RATE_PRINT
         auto after = std::chrono::steady_clock::now();
         auto seconds = std::chrono::duration<double>(after - before).count();
-        float rate = (float(dims[1] * dims[0]) * sizeof(Scalar)) / seconds;
-        rate /= 1024.f;
-        rate /= 1024.f;
-        rate /= 1024.f;
+        double rate = (float(dims[1] * dims[0]) * sizeof(Scalar)) / seconds;
+        rate /= 1024.;
+        rate /= 1024.;
+        rate /= 1024.;
         printf("Decode elapsed time: %.5f (s)\n", seconds);
         printf("# decode2 rate: %.2f (GB / sec) %d\n", rate, maxbits);
 #endif
