@@ -8,8 +8,8 @@ namespace syclZFP {
     template<typename Scalar>
     inline void gather_partial3(Scalar *q, const Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
         int x, y, z;
-        for (z = 0; z < nz; z++, p += sz - (std::ptrdiff_t) ny * sy) {
-            for (y = 0; y < ny; y++, p += sy - (std::ptrdiff_t) nx * sx) {
+        for (z = 0; z < nz; z++, p += sz - ny * sy) {
+            for (y = 0; y < ny; y++, p += sy - nx * sx) {
                 for (x = 0; x < nx; x++, p += sx) {
                     q[16 * z + 4 * y + x] = *p;
                 }
@@ -75,9 +75,9 @@ namespace syclZFP {
         if (block[0] + 4 > dims[0]) partial = true;
 
         if (partial) {
-            const size_t nx = block[2] + 4 > dims[2] ? dims[2] - block[2] : 4;
-            const size_t ny = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
-            const size_t nz = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
+            const uint nx = block[2] + 4 > dims[2] ? dims[2] - block[2] : 4;
+            const uint ny = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
+            const uint nz = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
             //os << "Partial Block " << block_idx << " offset " << offset << " dims " << dims[0] << " " << dims[1] << " " << dims[2] << '\n' << sycl::flush;
             gather_partial3(fblock, scalars + offset, (int) nx, (int) ny, (int) nz, stride.x, stride.y, stride.z);
 
@@ -85,9 +85,12 @@ namespace syclZFP {
             //os << "Not partial Block " << block_idx << " offset " << offset << " dims " << dims[0] << " " << dims[1] << " " << dims[2] << '\n'<< sycl::flush;
             gather3(fblock, scalars + offset, stride.x, stride.y, stride.z);
         }
+
         int bits = zfp_encode_block<Scalar, ZFP_3D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
-        if (variable_rate)
+        if (variable_rate) {
             block_bits[block_idx] = bits;
+        }
+
     }
 
     //
@@ -126,7 +129,7 @@ namespace syclZFP {
 
         sycl::range<3> grid_size = calculate_global_work_size(q, total_blocks, preferred_block_size);
 
-        size_t stream_bytes = calc_device_mem3d(zfp_pad, (uint) maxbits);
+        size_t stream_bytes = calc_device_mem3d(zfp_pad, maxbits);
         //ensure we start with 0s
         sycl::event init_e = q.memset(stream, 0, stream_bytes);
 

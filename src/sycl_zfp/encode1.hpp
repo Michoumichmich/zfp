@@ -28,10 +28,10 @@ namespace syclZFP {
             const Scalar *scalars,
             Word *stream,
             ushort *block_bits,
-            const uint dim,
+            const size_t dim,
             const int sx,
-            const uint padded_dim,
-            const uint tot_blocks) {
+            const size_t padded_dim,
+            const size_t tot_blocks) {
 
         typedef long long int ll;
         const size_t block_idx = item.get_global_linear_id();
@@ -56,14 +56,15 @@ namespace syclZFP {
 
         if (partial) {
             uint nx = 4 - (padded_dim - dim);
-            gather_partial1(fblock, scalars + offset, nx, sx);
+            gather_partial1(fblock, scalars + offset, (int) nx, sx);
         } else {
             gather1(fblock, scalars + offset, sx);
         }
 
-        uint bits = zfp_encode_block<Scalar, ZFP_1D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
-        if (variable_rate)
+        auto bits = zfp_encode_block<Scalar, ZFP_1D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
+        if (variable_rate) {
             block_bits[block_idx] = bits;
+        }
     }
 
     //
@@ -72,7 +73,7 @@ namespace syclZFP {
     template<class Scalar, bool variable_rate>
     size_t encode1launch(
             sycl::queue &q,
-            uint dim,
+            size_t dim,
             int sx,
             const Scalar *d_data,
             Word *stream,
@@ -84,14 +85,14 @@ namespace syclZFP {
         const int preferred_block_size = 128;
         sycl::range<3> block_size(1, 1, preferred_block_size);
 
-        uint zfp_pad(dim);
+        size_t zfp_pad(dim);
         if (zfp_pad % 4 != 0) zfp_pad += 4 - dim % 4;
 
-        const uint zfp_blocks = (zfp_pad) / 4;
+        const size_t zfp_blocks = (zfp_pad) / 4;
         //
         // we need to ensure that we launch a multiple of the block size
         //
-        long int block_pad = 0;
+        size_t block_pad = 0;
         if (zfp_blocks % preferred_block_size != 0) {
             block_pad = preferred_block_size - zfp_blocks % preferred_block_size;
         }
@@ -130,7 +131,7 @@ namespace syclZFP {
 #ifdef SYCL_ZFP_RATE_PRINT
         auto after = std::chrono::steady_clock::now();
         auto seconds = std::chrono::duration<double>(after - before).count();
-        double gb = (float(dim) * float(sizeof(Scalar))) / (1024.f * 1024.f * 1024.f);
+        double gb = (double(dim) * double(sizeof(Scalar))) / (1024. * 1024. * 1024.);
         double rate = gb / seconds;
         printf("Encode elapsed time: %.5f (s)\n", seconds);
         printf("# encode1 rate: %.2f (GB / sec) %d\n", rate, maxbits);
@@ -144,7 +145,7 @@ namespace syclZFP {
     template<class Scalar, bool variable_rate>
     size_t encode1(
             sycl::queue &q,
-            int dim,
+            size_t dim,
             int sx,
             Scalar *d_data,
             Word *stream,

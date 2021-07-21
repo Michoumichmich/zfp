@@ -78,7 +78,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode3launch(sycl::queue &q, sycl::id<3> dims, sycl::int3 stride, Word *stream, Scalar *d_data, uint maxbits) {
+    size_t decode3launch(sycl::queue &q, sycl::id<3> dims, sycl::int3 stride, Word *stream, Scalar *d_data, int maxbits) {
         const int preferred_block_size = 128;
         sycl::range<3> block_size(1, 1, preferred_block_size);
 

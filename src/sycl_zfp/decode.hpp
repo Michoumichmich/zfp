@@ -30,7 +30,6 @@ namespace syclZFP {
         return static_cast<int32_t>((x ^ get_nbmask<uint32_t>()) - get_nbmask<uint32_t>());
     }
 
-
     template<int block_size>
     class BlockReader {
     private:
@@ -85,11 +84,11 @@ namespace syclZFP {
 
             int first_read = sycl::min(rem_bits, n_bits);
             // first mask
-            Word mask = ((Word) 1 << ((first_read))) - 1;
+            Word mask = ((Word) 1 << (first_read)) - 1;
             bits = m_buffer & mask;
             m_buffer >>= n_bits;
-            m_current_bit += first_read;
-            long int next_read = 0;
+            m_current_bit += (uint) first_read;
+            int next_read = 0;
             if (n_bits >= rem_bits) {
                 ++m_words;
                 m_buffer = *m_words;
@@ -103,7 +102,7 @@ namespace syclZFP {
             mask = ((Word) 1 << ((next_read))) - 1;
             bits += (m_buffer & mask) << first_read;
             m_buffer >>= next_read;
-            m_current_bit += next_read;
+            m_current_bit += (uint) next_read;
             return bits;
         }
 

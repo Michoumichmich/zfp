@@ -210,10 +210,6 @@ namespace syclZFP {
 
     template<int block_size>
     struct BlockWriter {
-        //    using memory_order = sycl::ONEAPI::memory_order;
-        //    using memory_scope = sycl::ONEAPI::memory_scope;
-        using address_space = sycl::access::address_space;
-
         int m_word_index;
         int m_start_bit;
         int m_current_bit;
@@ -351,10 +347,10 @@ namespace syclZFP {
         BlockWriter<BlockSize> block_writer(stream, maxbits, block_idx);
         int emax = max_exponent<Scalar, BlockSize>(fblock);
         maxprec = precision<BlockSize>(emax, maxprec, minexp);
-        int e = maxprec ? emax + get_ebias<Scalar>() : 0;
+        uint e = maxprec ? (uint) (emax + get_ebias<Scalar>()) : 0;
         if (e) {
-            const int ebits = get_ebits<Scalar>() + 1;
-            block_writer.write_bits(2 * e + 1, ebits);
+            const auto ebits = get_ebits<Scalar>() + 1;
+            block_writer.write_bits(2 * e + 1u, ebits);
             typedef typename zfp_traits<Scalar>::Int Int;
             Int iblock[BlockSize];
             fwd_cast<Scalar, Int, BlockSize>(iblock, fblock, emax);

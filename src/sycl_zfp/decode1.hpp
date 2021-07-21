@@ -47,15 +47,14 @@ namespace syclZFP {
 
         zfp_decode(reader, result, maxbits);
 
-        uint block;
-        block = block_idx * 4ull;
+        size_t block = block_idx * 4ull;
         const ll offset = (ll) block * stride;
 
         bool partial = false;
         if (block + 4 > dim) partial = true;
         if (partial) {
-            const int nx = static_cast<int>(4 - (padded_dim - dim));
-            scatter_partial1(result, out + offset, nx, stride);
+            uint nx = 4 - (padded_dim - dim);
+            scatter_partial1(result, out + offset, (int) nx, stride);
         } else {
             scatter1(result, out + offset, stride);
         }

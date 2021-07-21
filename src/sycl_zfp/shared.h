@@ -75,8 +75,8 @@ namespace syclZFP {
 
     size_t calc_device_mem2d(const sycl::id<2> dims, const int maxbits) {
         const size_t vals_per_block = 16;
-        size_t total_blocks = (dims[sycl::elem::x] * dims[sycl::elem::y]) / vals_per_block;
-        if ((dims[sycl::elem::x] * dims[sycl::elem::y]) % vals_per_block != 0) total_blocks++;
+        size_t total_blocks = (dims[0] * dims[1]) / vals_per_block;
+        if ((dims[0] * dims[1]) % vals_per_block != 0) total_blocks++;
         const auto bits_per_block = (size_t) maxbits;
         const size_t bits_per_word = sizeof(Word) * 8;
         const size_t total_bits = bits_per_block * total_blocks;
@@ -87,7 +87,7 @@ namespace syclZFP {
 
     size_t calc_device_mem3d(const sycl::id<3> encoded_dims, const int bits_per_block) {
         const size_t vals_per_block = 64;
-        const size_t size = encoded_dims[sycl::elem::x] * encoded_dims[sycl::elem::y] * encoded_dims[sycl::elem::z];
+        const size_t size = encoded_dims[0] * encoded_dims[1] * encoded_dims[2];
         size_t total_blocks = size / vals_per_block;
         const size_t bits_per_word = sizeof(Word) * 8;
         const size_t total_bits = (size_t) bits_per_block * total_blocks;

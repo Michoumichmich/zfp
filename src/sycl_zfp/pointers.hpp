@@ -37,7 +37,7 @@ namespace syclZFP {
      * @param ptr
      * @return
      */
-    template<typename T, bool debug=false>
+    template<typename T, bool debug = false>
     inline bool queue_can_access_ptr(sycl::queue &q, const T *ptr) {
 #ifndef IMPLICIT_MEMORY_COPY
         return false; // If we're not doing implicit memory copies, this test should always fail

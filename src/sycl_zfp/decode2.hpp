@@ -8,7 +8,7 @@ namespace syclZFP {
     template<typename Scalar>
     inline void scatter_partial2(const Scalar *q, Scalar *p, int nx, int ny, int sx, int sy) {
         int x, y;
-        for (y = 0; y < ny; y++, p += sy - (ptrdiff_t) nx * sx, q += 4 - nx)
+        for (y = 0; y < ny; y++, p += sy - nx * sx, q += 4 - nx)
             for (x = 0; x < nx; x++, p += sx, q++)
                 *p = *q;
     }
@@ -49,7 +49,7 @@ namespace syclZFP {
         // logical block dims
         sycl::id<2> block_dims = padded_dims >> 2;
         // logical pos in 3d array
-        sycl::uint2 block;
+        sycl::id<2> block;
         block[1] = (block_idx % block_dims[1]) * 4;
         block[0] = ((block_idx / block_dims[1]) % block_dims[0]) * 4;
 
@@ -61,7 +61,7 @@ namespace syclZFP {
         if (partial) {
             const uint nx = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
             const uint ny = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
-            scatter_partial2(result, out + offset, nx, ny, stride[1], stride[0]);
+            scatter_partial2(result, out + offset, (int) nx, (int) ny, stride[1], stride[0]);
         } else {
             scatter2(result, out + offset, stride[1], stride[0]);
         }

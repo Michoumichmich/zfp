@@ -7,8 +7,8 @@ namespace syclZFP {
 
     template<typename Scalar>
     inline void gather_partial2(Scalar *q, const Scalar *p, int nx, int ny, int sx, int sy) {
-        uint x, y;
-        for (y = 0; y < ny; y++, p += sy - (ptrdiff_t) nx * sx) {
+        int x, y;
+        for (y = 0; y < ny; y++, p += sy - nx * sx) {
             for (x = 0; x < nx; x++, p += sx)
                 q[4 * y + x] = *p;
             pad_block(q + 4 * y, nx, 1);
@@ -21,7 +21,7 @@ namespace syclZFP {
 
     template<typename Scalar>
     inline void gather2(Scalar *q, const Scalar *p, int sx, int sy) {
-        uint x, y;
+        int x, y;
         for (y = 0; y < 4; y++, p += sy - 4 * sx)
             for (x = 0; x < 4; x++, p += sx)
                 *q++ = *p;
@@ -74,9 +74,11 @@ namespace syclZFP {
             gather2(fblock, scalars + offset, stride[1], stride[0]);
         }
 
-        uint bits = zfp_encode_block<Scalar, ZFP_2D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
-        if (variable_rate)
+        auto bits = zfp_encode_block<Scalar, ZFP_2D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
+        if (variable_rate) {
             block_bits[block_idx] = bits;
+        }
+
     }
 
 //
@@ -148,7 +150,7 @@ namespace syclZFP {
 #ifdef SYCL_ZFP_RATE_PRINT
         auto after = std::chrono::steady_clock::now();
         auto seconds = std::chrono::duration<double>(after - before).count();
-        double mb = (float(dims[1] * dims[0]) * sizeof(Scalar)) / (1024.f * 1024.f * 1024.f);
+        double mb = (double(dims[1] * dims[0]) * sizeof(Scalar)) / (1024. * 1024. * 1024.);
         double rate = mb / seconds;
         printf("Encode elapsed time: %.5f (s)\n", seconds);
         printf("# encode2 rate: %.2f (GB / sec) %d\n", rate, maxbits);
