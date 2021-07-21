@@ -40,11 +40,9 @@ namespace syclZFP {
             const sycl::id<2> dims,
             const sycl::int2 stride,
             const sycl::id<2> padded_dims,
-            const uint tot_blocks) {
+            const size_t tot_blocks) {
 
-        typedef unsigned long long int ull;
-        typedef long long int ll;
-        const ull block_idx = item.get_global_linear_id();
+        const size_t block_idx = item.get_global_linear_id();
 
         if (block_idx >= tot_blocks) {
             // we can't launch the exact number of blocks
@@ -52,9 +50,7 @@ namespace syclZFP {
             return;
         }
 
-        sycl::id<2> block_dims;
-        block_dims[1] = padded_dims[1] >> 2; //x
-        block_dims[0] = padded_dims[0] >> 2; //y
+        sycl::id<2> block_dims = padded_dims >> 2;
 
         // logical pos in 3d array
         sycl::id<2> block;
@@ -72,7 +68,7 @@ namespace syclZFP {
         if (partial) {
             const uint nx = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
             const uint ny = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
-            gather_partial2(fblock, scalars + offset, nx, ny, stride[1], stride[0]);
+            gather_partial2(fblock, scalars + offset, (int) nx, (int) ny, stride[1], stride[0]);
 
         } else {
             gather2(fblock, scalars + offset, stride[1], stride[0]);

@@ -6,8 +6,8 @@
 namespace syclZFP {
 
     template<typename Scalar>
-    inline void scatter_partial2(const Scalar *q, Scalar *p, uint nx, uint ny, int sx, int sy) {
-        uint x, y;
+    inline void scatter_partial2(const Scalar *q, Scalar *p, int nx, int ny, int sx, int sy) {
+        int x, y;
         for (y = 0; y < ny; y++, p += sy - (ptrdiff_t) nx * sx, q += 4 - nx)
             for (x = 0; x < nx; x++, p += sx, q++)
                 *p = *q;
@@ -15,7 +15,7 @@ namespace syclZFP {
 
     template<typename Scalar>
     inline void scatter2(const Scalar *q, Scalar *p, int sx, int sy) {
-        uint x, y;
+        int x, y;
         for (y = 0; y < 4; y++, p += sy - 4 * sx)
             for (x = 0; x < 4; x++, p += sx)
                 *p = *q++;
@@ -27,14 +27,12 @@ namespace syclZFP {
             sycl::nd_item<3> item,
             const Word *blocks,
             Scalar *out,
-            const sycl::uint2 dims,
+            const sycl::id<2> dims,
             const sycl::int2 stride,
             const sycl::id<2> padded_dims,
-            uint maxbits) {
-        typedef unsigned long long int ull;
-        typedef long long int ll;
-        const ull block_idx = item.get_global_linear_id();
+            int maxbits) {
 
+        size_t block_idx = item.get_global_linear_id();
         size_t total_blocks = (padded_dims[1] * padded_dims[0]) / 16;
 
         if (block_idx >= total_blocks) {
@@ -49,9 +47,7 @@ namespace syclZFP {
         zfp_decode(reader, result, maxbits);
 
         // logical block dims
-        sycl::uint2 block_dims;
-        block_dims[1] = padded_dims[1] >> 2;
-        block_dims[0] = padded_dims[0] >> 2;
+        sycl::id<2> block_dims = padded_dims >> 2;
         // logical pos in 3d array
         sycl::uint2 block;
         block[1] = (block_idx % block_dims[1]) * 4;
@@ -72,7 +68,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode2launch(sycl::queue &q, sycl::uint2 dims, sycl::int2 stride, Word *stream, Scalar *d_data, uint maxbits) {
+    size_t decode2launch(sycl::queue &q, sycl::id<2> dims, sycl::int2 stride, Word *stream, Scalar *d_data, int maxbits) {
         const int preferred_block_size = 128;
         sycl::range<3> block_size(1, 1, preferred_block_size);
 
@@ -114,7 +110,7 @@ namespace syclZFP {
 #ifdef SYCL_ZFP_RATE_PRINT
         auto after = std::chrono::steady_clock::now();
         auto seconds = std::chrono::duration<double>(after - before).count();
-        double rate = (float(dims[1] * dims[0]) * sizeof(Scalar)) / seconds;
+        double rate = ((double) (dims[1] * dims[0]) * sizeof(Scalar)) / seconds;
         rate /= 1024.;
         rate /= 1024.;
         rate /= 1024.;
@@ -125,7 +121,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode2(sycl::queue &q, sycl::uint2 dims, sycl::int2 stride, Word *stream, Scalar *d_data, uint maxbits) {
+    size_t decode2(sycl::queue &q, sycl::id<2> dims, sycl::int2 stride, Word *stream, Scalar *d_data, int maxbits) {
         return decode2launch<Scalar>(q, dims, stride, stream, d_data, maxbits);
     }
 

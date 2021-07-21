@@ -42,12 +42,10 @@ namespace syclZFP {
             return;
         }
 
-        uint block_dim;
-        block_dim = padded_dim >> 2;
+        size_t block_dim = padded_dim >> 2;
 
         // logical pos in 3d array
-        uint block;
-        block = (block_idx % block_dim) * 4;
+        size_t block = (block_idx % block_dim) * 4;
 
         const ll offset = (ll) block * sx;
 

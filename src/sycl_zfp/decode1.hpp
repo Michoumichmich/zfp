@@ -27,19 +27,18 @@ namespace syclZFP {
             sycl::nd_item<3> item,
             Word *blocks,
             Scalar *out,
-            const uint dim,
+            const size_t dim,
             const int stride,
-            const uint padded_dim,
-            const uint total_blocks,
-            uint maxbits) {
-        typedef unsigned long long int ull;
-        typedef long long int ll;
+            const size_t padded_dim,
+            const size_t total_blocks,
+            int maxbits) {
+
         typedef typename syclZFP::zfp_traits<Scalar>::UInt UInt;
         typedef typename syclZFP::zfp_traits<Scalar>::Int Int;
 
         const int intprec = get_precision<Scalar>();
 
-        const ull block_idx = item.get_global_linear_id();
+        const size_t block_idx = item.get_global_linear_id();
 
         if (block_idx >= total_blocks) return;
 
@@ -55,7 +54,7 @@ namespace syclZFP {
         bool partial = false;
         if (block + 4 > dim) partial = true;
         if (partial) {
-            const uint nx = 4u - (padded_dim - dim);
+            const int nx = static_cast<int>(4 - (padded_dim - dim));
             scatter_partial1(result, out + offset, nx, stride);
         } else {
             scatter1(result, out + offset, stride);
@@ -65,11 +64,11 @@ namespace syclZFP {
     template<class Scalar>
     size_t decode1launch(
             sycl::queue &q,
-            uint dim,
+            size_t dim,
             int stride,
             Word *stream,
             Scalar *d_data,
-            uint maxbits) {
+            int maxbits) {
         const int preferred_block_size = 128;
 
         uint zfp_pad(dim);
@@ -123,11 +122,11 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode1(sycl::queue &q, uint dim,
+    size_t decode1(sycl::queue &q, size_t dim,
                    int stride,
                    Word *stream,
                    Scalar *d_data,
-                   uint maxbits) {
+                   int maxbits) {
         return decode1launch<Scalar>(q, dim, stride, stream, d_data, maxbits);
     }
 

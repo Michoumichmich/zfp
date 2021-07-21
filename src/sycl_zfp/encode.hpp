@@ -132,7 +132,7 @@ namespace syclZFP {
 
     template<>
     float inline quantize_factor<float>(const int &exponent, float) {
-        return LDEXP((float) 1.0, get_precision<float>() - 2 - exponent);
+        return LDEXP(1.f, get_precision<float>() - 2 - exponent);
     }
 
     template<>
@@ -245,7 +245,7 @@ namespace syclZFP {
         }
 
 
-        long long unsigned int write_bits(const long long unsigned int &bits, const int &n_bits) {
+        size_t write_bits(const uint64_t &bits, const int &n_bits) {
             const int wbits = sizeof(Word) * 8;
             int seg_start = (m_start_bit + m_current_bit) % wbits;
             int write_index = m_word_index + ((m_start_bit + m_current_bit) / wbits);
@@ -323,7 +323,7 @@ namespace syclZFP {
         for (int k = intprec, n = 0; bits && k-- > kmin;) {
             /* step 1: extract bit plane #k to x */
             uint64_t x = 0;
-            for (uint i = 0; i < BlockSize; i++) {
+            for (int i = 0; i < BlockSize; i++) {
                 x += (uint64_t) ((ublock[i] >> k) & 1u) << i;
             }
             /* step 2: encode first n bits of bit plane */

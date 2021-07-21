@@ -7,6 +7,7 @@
 
 
 typedef uint64_t Word;
+typedef int64_t ll;
 #define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
 
 
@@ -34,6 +35,16 @@ typedef uint64_t Word;
 
 namespace syclZFP {
 
+
+    struct int3_t {
+        int z, y, x;
+    };
+
+    struct int2_t {
+        int y, x;
+    };
+
+
     template<typename T>
     void print_bits(sycl::stream &os, const T &bits) {
         const int bit_size = sizeof(T) * 8;
@@ -47,13 +58,13 @@ namespace syclZFP {
         os << '\n';
     }
 
-    size_t calc_device_mem1d(const uint dim, const uint maxbits) {
+    size_t calc_device_mem1d(const size_t dim, const int maxbits) {
         const size_t vals_per_block = 4;
         size_t total_blocks = dim / vals_per_block;
         if (dim % vals_per_block != 0) {
             total_blocks++;
         }
-        const size_t bits_per_block = maxbits;
+        const auto bits_per_block = (size_t) maxbits;
         const size_t bits_per_word = sizeof(Word) * 8;
         const size_t total_bits = bits_per_block * total_blocks;
         size_t alloc_size = total_bits / bits_per_word;
@@ -62,11 +73,11 @@ namespace syclZFP {
         return alloc_size * sizeof(Word);
     }
 
-    size_t calc_device_mem2d(const sycl::id<2> dims, const uint maxbits) {
+    size_t calc_device_mem2d(const sycl::id<2> dims, const int maxbits) {
         const size_t vals_per_block = 16;
         size_t total_blocks = (dims[sycl::elem::x] * dims[sycl::elem::y]) / vals_per_block;
         if ((dims[sycl::elem::x] * dims[sycl::elem::y]) % vals_per_block != 0) total_blocks++;
-        const size_t bits_per_block = maxbits;
+        const auto bits_per_block = (size_t) maxbits;
         const size_t bits_per_word = sizeof(Word) * 8;
         const size_t total_bits = bits_per_block * total_blocks;
         size_t alloc_size = total_bits / bits_per_word;
@@ -74,12 +85,12 @@ namespace syclZFP {
         return alloc_size * sizeof(Word);
     }
 
-    size_t calc_device_mem3d(const sycl::id<3> encoded_dims, const uint bits_per_block) {
+    size_t calc_device_mem3d(const sycl::id<3> encoded_dims, const int bits_per_block) {
         const size_t vals_per_block = 64;
         const size_t size = encoded_dims[sycl::elem::x] * encoded_dims[sycl::elem::y] * encoded_dims[sycl::elem::z];
         size_t total_blocks = size / vals_per_block;
         const size_t bits_per_word = sizeof(Word) * 8;
-        const size_t total_bits = bits_per_block * total_blocks;
+        const size_t total_bits = (size_t) bits_per_block * total_blocks;
         const size_t alloc_size = total_bits / bits_per_word;
         return alloc_size * sizeof(Word);
     }
@@ -164,25 +175,25 @@ namespace syclZFP {
 
 
     template<typename Int, typename Scalar>
-    Scalar dequantize(const Int &x, const int &e);
+    Scalar dequantize(Int x, int e);
 
     template<>
-    double dequantize<int64_t, double>(const int64_t &x, const int &e) {
+    double dequantize<int64_t, double>(int64_t x, int e) {
         return LDEXP((double) x, e - (int) (CHAR_BIT * scalar_sizeof<double>() - 2));
     }
 
     template<>
-    float dequantize<int32_t, float>(const int32_t &x, const int &e) {
+    float dequantize<int32_t, float>(int32_t x, int e) {
         return LDEXP((float) x, e - (int) (CHAR_BIT * scalar_sizeof<float>() - 2));
     }
 
     template<>
-    int32_t dequantize<int32_t, int32_t>(const int32_t &x, const int &e) {
+    int32_t dequantize<int32_t, int32_t>(int32_t x, int e) {
         return 1;
     }
 
     template<>
-    int64_t dequantize<int64_t, int64_t>(const int64_t &x, const int &e) {
+    int64_t dequantize<int64_t, int64_t>(int64_t x, int e) {
         return 1;
     }
 

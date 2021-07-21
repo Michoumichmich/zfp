@@ -8,8 +8,8 @@ namespace syclZFP {
     template<typename Scalar>
     inline void gather_partial3(Scalar *q, const Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
         int x, y, z;
-        for (z = 0; z < nz; z++, p += sz -  ny * sy) {
-            for (y = 0; y < ny; y++, p += sy -  nx * sx) {
+        for (z = 0; z < nz; z++, p += sz - (std::ptrdiff_t) ny * sy) {
+            for (y = 0; y < ny; y++, p += sy - (std::ptrdiff_t) nx * sx) {
                 for (x = 0; x < nx; x++, p += sx) {
                     q[16 * z + 4 * y + x] = *p;
                 }
@@ -36,7 +36,7 @@ namespace syclZFP {
 
     template<class Scalar, bool variable_rate>
     void syclEncode3(
-            sycl::nd_item<3> item,
+            const size_t block_idx,
             const int minbits,
             const int maxbits,
             const int maxprec,
@@ -45,14 +45,11 @@ namespace syclZFP {
             Word *stream,
             ushort *block_bits,
             const sycl::id<3> dims,
-            const sycl::int3 stride,
+            const int3_t stride,
             const sycl::id<3> padded_dims,
-            const uint tot_blocks
+            const size_t tot_blocks
             //sycl::stream os
     ) {
-
-        typedef long long int ll;
-        const size_t block_idx = item.get_global_linear_id();
 
         if (block_idx >= tot_blocks) {
             // we can't launch the exact number of blocks
@@ -60,10 +57,7 @@ namespace syclZFP {
             return;
         }
 
-        sycl::id<3> block_dims;
-        block_dims[0] = padded_dims[0] >> 2;
-        block_dims[1] = padded_dims[1] >> 2;
-        block_dims[2] = padded_dims[2] >> 2;
+        sycl::id<3> block_dims = padded_dims >> 2;
 
         // logical pos in 3d array
         sycl::id<3> block;
@@ -72,7 +66,7 @@ namespace syclZFP {
         block[0] = (block_idx / (block_dims[2] * block_dims[1])) * 4;
 
         // default strides
-        const ll offset = (ll) block[2] * stride[2] + (ll) block[1] * stride[1] + (ll) block[0] * stride[0];
+        const ll offset = (ll) block[2] * stride.x + (ll) block[1] * stride.y + (ll) block[0] * stride.z;
         Scalar fblock[ZFP_3D_BLOCK_SIZE];
 
         bool partial = false;
@@ -81,17 +75,17 @@ namespace syclZFP {
         if (block[0] + 4 > dims[0]) partial = true;
 
         if (partial) {
-            const int nx = block[2] + 4 > dims[2] ? dims[2] - block[2] : 4;
-            const int ny = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
-            const int nz = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
+            const size_t nx = block[2] + 4 > dims[2] ? dims[2] - block[2] : 4;
+            const size_t ny = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
+            const size_t nz = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
             //os << "Partial Block " << block_idx << " offset " << offset << " dims " << dims[0] << " " << dims[1] << " " << dims[2] << '\n' << sycl::flush;
-            gather_partial3(fblock, scalars + offset, nx, ny, nz, stride[2], stride[1], stride[0]);
+            gather_partial3(fblock, scalars + offset, (int) nx, (int) ny, (int) nz, stride.x, stride.y, stride.z);
 
         } else {
             //os << "Not partial Block " << block_idx << " offset " << offset << " dims " << dims[0] << " " << dims[1] << " " << dims[2] << '\n'<< sycl::flush;
-            gather3(fblock, scalars + offset, stride[2], stride[1], stride[0]);
+            gather3(fblock, scalars + offset, stride.x, stride.y, stride.z);
         }
-        uint bits = zfp_encode_block<Scalar, ZFP_3D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
+        int bits = zfp_encode_block<Scalar, ZFP_3D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
         if (variable_rate)
             block_bits[block_idx] = bits;
     }
@@ -103,7 +97,7 @@ namespace syclZFP {
     size_t encode3launch(
             sycl::queue &q,
             sycl::id<3> dims,
-            sycl::int3 stride,
+            int3_t stride,
             const Scalar *d_data,
             Word *stream,
             ushort *d_block_bits,
@@ -132,7 +126,7 @@ namespace syclZFP {
 
         sycl::range<3> grid_size = calculate_global_work_size(q, total_blocks, preferred_block_size);
 
-        size_t stream_bytes = calc_device_mem3d(zfp_pad, maxbits);
+        size_t stream_bytes = calc_device_mem3d(zfp_pad, (uint) maxbits);
         //ensure we start with 0s
         sycl::event init_e = q.memset(stream, 0, stream_bytes);
 
@@ -145,7 +139,7 @@ namespace syclZFP {
             //sycl::stream os(10240, 2000, cgh);
             cgh.parallel_for(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclEncode3<Scalar, variable_rate>
-                        (item,
+                        (item.get_global_linear_id(),
                          minbits,
                          maxbits,
                          maxprec,
@@ -185,7 +179,7 @@ namespace syclZFP {
     size_t encode3(
             sycl::queue &q,
             sycl::id<3> dims,
-            sycl::int3 stride,
+            int3_t stride,
             Scalar *d_data,
             Word *stream,
             ushort *d_block_bits,

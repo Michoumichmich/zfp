@@ -29,17 +29,15 @@ namespace syclZFP {
             sycl::nd_item<3> item,
             const Word *blocks,
             Scalar *out,
-            const sycl::uint3 dims,
+            const sycl::id<3> dims,
             const sycl::int3 stride,
             const sycl::id<3> padded_dims,
-            uint maxbits) {
-
-        typedef unsigned long long int ull;
-        typedef long long int ll;
-        const uint block_idx = item.get_global_linear_id();
+            int maxbits) {
 
 
-        const long unsigned int total_blocks = (padded_dims[2] * padded_dims[1] * padded_dims[0]) / 64;
+        const size_t block_idx = item.get_global_linear_id();
+
+        const size_t total_blocks = (padded_dims[2] * padded_dims[1] * padded_dims[0]) / 64;
 
         if (block_idx >= total_blocks) {
             return;
@@ -53,10 +51,8 @@ namespace syclZFP {
         zfp_decode<Scalar, BlockSize>(reader, result, maxbits);
 
         // logical block dims
-        sycl::id<3> block_dims;
-        block_dims[2] = padded_dims[2] >> 2;
-        block_dims[1] = padded_dims[1] >> 2;
-        block_dims[0] = padded_dims[0] >> 2;
+        sycl::id<3> block_dims = padded_dims >> 2;
+
         // logical pos in 3d array
         sycl::id<3> block;
         block[2] = (block_idx % block_dims[2]) * 4;
@@ -75,18 +71,18 @@ namespace syclZFP {
             const uint ny = block[1] + 4u > dims[1] ? dims[1] - block[1] : 4;
             const uint nz = block[0] + 4u > dims[0] ? dims[0] - block[0] : 4;
 
-            scatter_partial3(result, out + offset, nx, ny, nz, stride[2], stride[1], stride[0]);
+            scatter_partial3(result, out + offset, (int) nx, (int) ny, (int) nz, stride[2], stride[1], stride[0]);
         } else {
             scatter3(result, out + offset, stride[2], stride[1], stride[0]);
         }
     }
 
     template<class Scalar>
-    size_t decode3launch(sycl::queue &q, sycl::uint3 dims, sycl::int3 stride, Word *stream, Scalar *d_data, uint maxbits) {
+    size_t decode3launch(sycl::queue &q, sycl::id<3> dims, sycl::int3 stride, Word *stream, Scalar *d_data, uint maxbits) {
         const int preferred_block_size = 128;
         sycl::range<3> block_size(1, 1, preferred_block_size);
 
-        sycl::id<3> zfp_pad(dims[0], dims[1], dims[2]);
+        sycl::id<3> zfp_pad(dims);
         // ensure that we have block sizes
         // that are a multiple of 4
         if (zfp_pad[2] % 4 != 0) zfp_pad[2] += 4 - dims[2] % 4;
@@ -140,7 +136,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode3(sycl::queue &q, sycl::uint3 dims, sycl::int3 stride, Word *stream, Scalar *d_data, uint maxbits) {
+    size_t decode3(sycl::queue &q, sycl::id<3> dims, sycl::int3 stride, Word *stream, Scalar *d_data, int maxbits) {
         return decode3launch<Scalar>(q, dims, stride, stream, d_data, maxbits);
     }
 

@@ -23,18 +23,18 @@ namespace syclZFP {
 
 /* map two's complement signed integer to negabinary unsigned integer */
     inline int64_t uint2int(uint64_t x) {
-        return (x ^ get_nbmask<uint64_t>()) - get_nbmask<uint64_t>();
+        return static_cast<int64_t>((x ^ get_nbmask<uint64_t>()) - get_nbmask<uint64_t>());
     }
 
     inline int32_t uint2int(uint32_t x) {
-        return (x ^ get_nbmask<uint32_t>()) - get_nbmask<uint32_t>();
+        return static_cast<int32_t>((x ^ get_nbmask<uint32_t>()) - get_nbmask<uint32_t>());
     }
 
 
     template<int block_size>
     class BlockReader {
     private:
-        const uint m_maxbits;
+        const int m_maxbits;
         size_t m_current_bit{};
         const Word *m_words{};
         Word m_buffer{};
@@ -45,13 +45,13 @@ namespace syclZFP {
                 : m_maxbits(0) {}
 
     public:
-        BlockReader(const Word *b, const uint &maxbits, const size_t &block_idx, const size_t &num_blocks)
+        BlockReader(const Word *b, int maxbits, const size_t &block_idx, const size_t &num_blocks)
                 : m_maxbits(maxbits), m_valid_block(true) {
             if (block_idx >= num_blocks) m_valid_block = false;
-            size_t word_index = ((size_t) block_idx * maxbits) / (sizeof(Word) * 8);
+            size_t word_index = (block_idx * (size_t) maxbits) / (sizeof(Word) * 8);
             m_words = b + word_index;
             m_buffer = *m_words;
-            m_current_bit = ((size_t) block_idx * maxbits) % (sizeof(Word) * 8);
+            m_current_bit = (block_idx * (size_t) maxbits) % (sizeof(Word) * 8);
 
             m_buffer >>= m_current_bit;
             m_block_idx = block_idx;
@@ -63,8 +63,8 @@ namespace syclZFP {
             print_bits(os, m_buffer);
         }
 
-        uint read_bit() {
-            uint bit = m_buffer & 1;
+        uint64_t read_bit() {
+            uint64_t bit = m_buffer & 1;
             ++m_current_bit;
             m_buffer >>= 1;
             // handle moving into next word
@@ -78,12 +78,12 @@ namespace syclZFP {
 
 
         // note this assumes that n_bits is <= 64
-        inline size_t read_bits(const uint &n_bits) {
+        inline size_t read_bits(int n_bits) {
             size_t bits;
             // rem bits will always be positive
             int rem_bits = sizeof(Word) * 8 - m_current_bit;
 
-            int first_read = sycl::min(rem_bits, (int) n_bits);
+            int first_read = sycl::min(rem_bits, n_bits);
             // first mask
             Word mask = ((Word) 1 << ((first_read))) - 1;
             bits = m_buffer & mask;
@@ -110,18 +110,18 @@ namespace syclZFP {
     }; // block reader
 
     template<typename Scalar, int Size, typename UInt>
-    inline void decode_ints(BlockReader<Size> &reader, uint &maxbits, UInt *data) {
-        const uint intprec = (uint) get_precision<Scalar>();
+    inline void decode_ints(BlockReader<Size> &reader, int maxbits, UInt *data) {
+        const int intprec = get_precision<Scalar>();
         // maxprec = 64;
-        const uint kmin = 0; //= intprec > maxprec ? intprec - maxprec : 0;
-        uint bits = maxbits;
+        const int kmin = 0; //= intprec > maxprec ? intprec - maxprec : 0;
+        int bits = maxbits;
 
         // initialize data array to all zeros
         memset(data, 0, Size * sizeof(UInt));
 
 
         // decode one bit plane at a time from MSB to LSB
-        for (uint k = intprec, m = 0, n = 0; bits && (m = 0, k-- > kmin);) {
+        for (int k = intprec, m = 0, n = 0; bits && (m = 0, k-- > kmin);) {
             // step 1: decode first n bits of bit plane #k
             m = sycl::min(n, bits);
             bits -= m;
@@ -146,7 +146,7 @@ namespace syclZFP {
             }
             // step 3: deposit bit plane from x
 
-            for (uint i = 0; i < Size; i++, x >>= 1)
+            for (int i = 0; i < Size; i++, x >>= 1)
                 data[i] += (UInt) (x & 1u) << k;
         }
 
@@ -206,24 +206,24 @@ namespace syclZFP {
     };
 
     template<typename Scalar, int BlockSize>
-    void zfp_decode(BlockReader<BlockSize> &reader, Scalar *fblock, uint maxbits) {
+    void zfp_decode(BlockReader<BlockSize> &reader, Scalar *fblock, int maxbits) {
         typedef typename syclZFP::zfp_traits<Scalar>::UInt UInt;
         typedef typename syclZFP::zfp_traits<Scalar>::Int Int;
 
-        uint s_cont = 1;
+        int s_cont = 1;
         //
         // there is no skip path for integers so just continue
         //
         if (!is_int<Scalar>()) {
-            s_cont = reader.read_bit();
+            s_cont = (int) reader.read_bit();
         }
 
         if (s_cont) {
-            uint ebits = (uint) get_ebits<Scalar>() + 1u;
-            uint emax;
+            int ebits = get_ebits<Scalar>() + 1;
+            int emax;
             if (!is_int<Scalar>()) {
                 // read in the shared exponent
-                emax = reader.read_bits(ebits - 1) - (uint) get_ebias<Scalar>();
+                emax = (int) reader.read_bits(ebits - 1) - get_ebias<Scalar>();
             } else {
                 // no exponent bits
                 ebits = 0;
