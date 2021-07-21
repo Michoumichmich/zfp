@@ -38,7 +38,7 @@ namespace syclZFP {
             Word *stream,
             ushort *block_bits,
             const sycl::id<2> dims,
-            const sycl::int2 stride,
+            const int2_t stride,
             const sycl::id<2> padded_dims,
             const size_t tot_blocks) {
 
@@ -57,7 +57,7 @@ namespace syclZFP {
         block[1] = (block_idx % block_dims[1]) * 4; //X
         block[0] = ((block_idx / block_dims[0]) % block_dims[0]) * 4; //Y
 
-        const ll offset = (ll) block[1] * stride[1] + (ll) block[0] * stride[0];
+        const ll offset = (ll) block[1] * stride.x + (ll) block[0] * stride.y;
 
         Scalar fblock[ZFP_2D_BLOCK_SIZE];
 
@@ -68,10 +68,10 @@ namespace syclZFP {
         if (partial) {
             const uint nx = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
             const uint ny = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
-            gather_partial2(fblock, scalars + offset, (int) nx, (int) ny, stride[1], stride[0]);
+            gather_partial2(fblock, scalars + offset, (int) nx, (int) ny, stride.x, stride.y);
 
         } else {
-            gather2(fblock, scalars + offset, stride[1], stride[0]);
+            gather2(fblock, scalars + offset, stride.x, stride.y);
         }
 
         auto bits = zfp_encode_block<Scalar, ZFP_2D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
@@ -88,7 +88,7 @@ namespace syclZFP {
     size_t encode2launch(
             sycl::queue &q,
             sycl::id<2> dims,
-            sycl::int2 stride,
+            int2_t stride,
             const Scalar *d_data,
             Word *stream,
             ushort *d_block_bits,
@@ -162,7 +162,7 @@ namespace syclZFP {
     size_t encode2(
             sycl::queue &q,
             sycl::id<2> dims,
-            sycl::int2 stride,
+            int2_t stride,
             Scalar *d_data,
             Word *stream,
             ushort *d_block_bits,

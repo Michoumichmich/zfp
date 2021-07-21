@@ -8,6 +8,12 @@
 
 typedef uint64_t Word;
 typedef int64_t ll;
+
+
+typedef size_t index_t;
+typedef int64_t sindex_t;
+
+
 #define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
 
 
@@ -37,11 +43,11 @@ namespace syclZFP {
 
 
     struct int3_t {
-        int z, y, x;
+        int z{}, y{}, x{};
     };
 
     struct int2_t {
-        int y, x;
+        int y{}, x{};
     };
 
 

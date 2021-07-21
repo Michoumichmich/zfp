@@ -28,7 +28,7 @@ namespace syclZFP {
             const Word *blocks,
             Scalar *out,
             const sycl::id<2> dims,
-            const sycl::int2 stride,
+            const int2_t stride,
             const sycl::id<2> padded_dims,
             int maxbits) {
 
@@ -53,7 +53,7 @@ namespace syclZFP {
         block[1] = (block_idx % block_dims[1]) * 4;
         block[0] = ((block_idx / block_dims[1]) % block_dims[0]) * 4;
 
-        const ll offset = (ll) block[1] * stride[1] + (ll) block[0] * stride[0];
+        const ll offset = (ll) block[1] * stride.x + (ll) block[0] * stride.y;
 
         bool partial = false;
         if (block[1] + 4 > dims[1]) partial = true;
@@ -61,14 +61,14 @@ namespace syclZFP {
         if (partial) {
             const uint nx = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
             const uint ny = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
-            scatter_partial2(result, out + offset, (int) nx, (int) ny, stride[1], stride[0]);
+            scatter_partial2(result, out + offset, (int) nx, (int) ny, stride.x, stride.y);
         } else {
-            scatter2(result, out + offset, stride[1], stride[0]);
+            scatter2(result, out + offset, stride.x, stride.y);
         }
     }
 
     template<class Scalar>
-    size_t decode2launch(sycl::queue &q, sycl::id<2> dims, sycl::int2 stride, Word *stream, Scalar *d_data, int maxbits) {
+    size_t decode2launch(sycl::queue &q, sycl::id<2> dims, int2_t stride, Word *stream, Scalar *d_data, int maxbits) {
         const int preferred_block_size = 128;
         sycl::range<3> block_size(1, 1, preferred_block_size);
 
@@ -121,7 +121,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode2(sycl::queue &q, sycl::id<2> dims, sycl::int2 stride, Word *stream, Scalar *d_data, int maxbits) {
+    size_t decode2(sycl::queue &q, sycl::id<2> dims, int2_t stride, Word *stream, Scalar *d_data, int maxbits) {
         return decode2launch<Scalar>(q, dims, stride, stream, d_data, maxbits);
     }
 

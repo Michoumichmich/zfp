@@ -30,7 +30,7 @@ namespace syclZFP {
             const Word *blocks,
             Scalar *out,
             const sycl::id<3> dims,
-            const sycl::int3 stride,
+            const int3_t stride,
             const sycl::id<3> padded_dims,
             int maxbits) {
 
@@ -60,7 +60,7 @@ namespace syclZFP {
         block[0] = (block_idx / (block_dims[2] * block_dims[1])) * 4;
 
         // default strides
-        const ll offset = (ll) block[2] * stride[2] + (ll) block[1] * stride[1] + (ll) block[0] * stride[0];
+        const ll offset = (ll) block[2] * stride.x + (ll) block[1] * stride.y + (ll) block[0] * stride.z;
 
         bool partial = false;
         if (block[2] + 4 > dims[2]) partial = true;
@@ -71,14 +71,14 @@ namespace syclZFP {
             const uint ny = block[1] + 4u > dims[1] ? dims[1] - block[1] : 4;
             const uint nz = block[0] + 4u > dims[0] ? dims[0] - block[0] : 4;
 
-            scatter_partial3(result, out + offset, (int) nx, (int) ny, (int) nz, stride[2], stride[1], stride[0]);
+            scatter_partial3(result, out + offset, (int) nx, (int) ny, (int) nz, stride.x, stride.y, stride.z);
         } else {
-            scatter3(result, out + offset, stride[2], stride[1], stride[0]);
+            scatter3(result, out + offset, stride.x, stride.y, stride.z);
         }
     }
 
     template<class Scalar>
-    size_t decode3launch(sycl::queue &q, sycl::id<3> dims, sycl::int3 stride, Word *stream, Scalar *d_data, int maxbits) {
+    size_t decode3launch(sycl::queue &q, sycl::id<3> dims, int3_t stride, Word *stream, Scalar *d_data, int maxbits) {
         const int preferred_block_size = 128;
         sycl::range<3> block_size(1, 1, preferred_block_size);
 
@@ -136,7 +136,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode3(sycl::queue &q, sycl::id<3> dims, sycl::int3 stride, Word *stream, Scalar *d_data, int maxbits) {
+    size_t decode3(sycl::queue &q, sycl::id<3> dims, int3_t stride, Word *stream, Scalar *d_data, int maxbits) {
         return decode3launch<Scalar>(q, dims, stride, stream, d_data, maxbits);
     }
 
