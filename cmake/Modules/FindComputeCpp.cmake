@@ -41,7 +41,7 @@ set(COMPUTECPP_BITCODE "spir64" CACHE STRING
         "Bitcode types to use as SYCL targets in compute++.")
 mark_as_advanced(COMPUTECPP_BITCODE)
 
-set(SYCL_LANGUAGE_VERSION "2017" CACHE STRING "SYCL version to use. Defaults to 1.2.1.")
+set(SYCL_LANGUAGE_VERSION "2020" CACHE STRING "SYCL version to use. Defaults to 2020")
 
 find_package(OpenCL REQUIRED)
 

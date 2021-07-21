@@ -4,7 +4,7 @@
 #include <sycl/sycl.hpp>
 #include "type_info.hpp"
 #include "constants.h"
-
+#include <climits>
 
 typedef uint64_t Word;
 typedef int64_t ll;
@@ -13,6 +13,7 @@ typedef int64_t ll;
 typedef size_t index_t;
 typedef int64_t sindex_t;
 
+using const_perm_accessor = sycl::accessor<uchar, 1, sycl::access::mode::read, sycl::access::target::constant_buffer>;
 
 #define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
 
@@ -27,9 +28,17 @@ typedef int64_t sindex_t;
 #define FREXP(x, y) sycl::frexp((x),(y))
 #define ZFP_ENCODE_ATOMIC_REF_TYPE sycl::ONEAPI::atomic_ref<Word, sycl::ONEAPI::memory_order::relaxed, sycl::ONEAPI::memory_scope::device, sycl::access::address_space::global_device_space>
 #else
+
+#ifdef USING_COMPUTECPP
+#define LDEXP(x, y) ldexp((x),(y))
+#define FREXP(x, y) frexp((x),(y))
+#define ZFP_ENCODE_ATOMIC_REF_TYPE auto
+#else
 #define LDEXP(x, y) ldexp((x),(y))
 #define FREXP(x, y) frexp((x),(y))
 #define ZFP_ENCODE_ATOMIC_REF_TYPE sycl::atomic_ref<Word, sycl::memory_order::relaxed, sycl::memory_scope::device, address_space::global_space>
+#endif
+
 #endif
 
 #define NBMASK 0xaaaaaaaaaaaaaaaaull
@@ -248,23 +257,31 @@ namespace syclZFP {
         *p = x;
     }
 
-
     template<int BlockSize>
-    inline const uchar *get_perm();
+    sycl::buffer<uchar, 1> get_perm_buffer();
 
     template<>
-    inline const uchar *get_perm<64>() {
-        return perm_3d;
+    sycl::buffer<uchar, 1> get_perm_buffer<4>() {
+        sycl::buffer<uchar, 1> buf{perm_1, sycl::range<1>(4)};
+        buf.set_final_data(nullptr);
+        buf.set_write_back(false);
+        return buf;
     }
 
     template<>
-    inline const uchar *get_perm<16>() {
-        return perm_2;
+    sycl::buffer<uchar, 1> get_perm_buffer<16>() {
+        sycl::buffer<uchar, 1> buf{perm_2, sycl::range<1>(16)};
+        buf.set_final_data(nullptr);
+        buf.set_write_back(false);
+        return buf;
     }
 
     template<>
-    inline const uchar *get_perm<4>() {
-        return perm_1;
+    sycl::buffer<uchar, 1> get_perm_buffer<64>() {
+        sycl::buffer<uchar, 1> buf{perm_3, sycl::range<1>(64)};
+        buf.set_final_data(nullptr);
+        buf.set_write_back(false);
+        return buf;
     }
 
 

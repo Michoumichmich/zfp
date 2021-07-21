@@ -205,7 +205,7 @@ namespace syclZFP {
     };
 
     template<typename Scalar, int BlockSize>
-    void zfp_decode(BlockReader<BlockSize> &reader, Scalar *fblock, int maxbits) {
+    void zfp_decode(const_perm_accessor acc, BlockReader<BlockSize> &reader, Scalar *fblock, int maxbits) {
         typedef typename syclZFP::zfp_traits<Scalar>::UInt UInt;
         typedef typename syclZFP::zfp_traits<Scalar>::Int Int;
 
@@ -232,10 +232,9 @@ namespace syclZFP {
             UInt ublock[BlockSize];
             decode_ints<Scalar, BlockSize, UInt>(reader, maxbits, ublock);
             Int iblock[BlockSize];
-            const unsigned char *perm = get_perm<BlockSize>();
 #pragma unroll BlockSize
-            for (int i = 0; i < BlockSize; ++i) {
-                iblock[perm[i]] = uint2int(ublock[i]);
+            for (uint i = 0; i < BlockSize; ++i) {
+                iblock[acc[i]] = uint2int(ublock[i]);
             }
 
             inv_transform<BlockSize> trans;

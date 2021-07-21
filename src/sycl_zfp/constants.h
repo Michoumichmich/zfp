@@ -5,7 +5,7 @@ namespace syclZFP {
 
 #define index_3d(x, y, z) ((x) + 4 * ((y) + 4 * (z)))
 
-    static const uchar perm_3d[64] = {
+    static const uchar perm_3[64] = {
             index_3d(0, 0, 0), //  0 : 0
 
             index_3d(1, 0, 0), //  1 : 1

@@ -349,7 +349,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
         // Reversible mode not supported on GPU
         return 0;
     }
-    sycl::queue q{sycl::host_selector{}};
+    sycl::queue q{sycl::gpu_selector{}};
 
 #ifdef VERBOSE_SYCL
     std::cout << "Compressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';

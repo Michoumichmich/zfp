@@ -4,6 +4,8 @@
 #include "decode.hpp"
 
 namespace syclZFP {
+    template<class Scalar>
+    class decode2_kernel;
 
     template<typename Scalar>
     inline void scatter_partial2(const Scalar *q, Scalar *p, int nx, int ny, int sx, int sy) {
@@ -25,6 +27,7 @@ namespace syclZFP {
     template<class Scalar, int BlockSize>
     void syclDecode2(
             sycl::nd_item<3> item,
+            const_perm_accessor acc,
             const Word *blocks,
             Scalar *out,
             const sycl::id<2> dims,
@@ -41,10 +44,9 @@ namespace syclZFP {
 
         BlockReader<BlockSize> reader(blocks, maxbits, block_idx, total_blocks);
 
-        Scalar result[BlockSize];
-        memset(result, 0, sizeof(Scalar) * BlockSize);
+        Scalar result[BlockSize] = {Scalar(0)};
 
-        zfp_decode(reader, result, maxbits);
+        zfp_decode(acc, reader, result, maxbits);
 
         // logical block dims
         sycl::id<2> block_dims = padded_dims >> 2;
@@ -94,10 +96,14 @@ namespace syclZFP {
         auto before = std::chrono::steady_clock::now();
 #endif
         sycl::nd_range<3> kernel_parameters(grid_size * block_size, block_size);
+        auto buf = get_perm_buffer<16>();
         q.submit([&](sycl::handler &cgh) {
-            cgh.parallel_for(kernel_parameters, [=](sycl::nd_item<3> item) {
+            auto acc = buf.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(cgh);
+            cgh.parallel_for<decode2_kernel<Scalar>>(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclDecode2<Scalar, 16>
-                        (item, stream,
+                        (item,
+                         acc,
+                         stream,
                          d_data,
                          dims,
                          stride,

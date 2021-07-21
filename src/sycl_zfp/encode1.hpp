@@ -7,6 +7,10 @@
 
 namespace syclZFP {
 
+    template<class Scalar, bool variable_rate>
+    class encode1_kernel;
+
+
     template<typename Scalar>
     inline void gather_partial1(Scalar *q, const Scalar *p, int nx, int sx) {
         for (int x = 0; x < nx; x++, p += sx) { q[x] = *p; }
@@ -21,6 +25,7 @@ namespace syclZFP {
     template<class Scalar, bool variable_rate>
     void syclEncode1(
             sycl::nd_item<3> item,
+            const_perm_accessor acc,
             int minbits,
             const int maxbits,
             const int maxprec,
@@ -60,7 +65,7 @@ namespace syclZFP {
             gather1(fblock, scalars + offset, sx);
         }
 
-        auto bits = zfp_encode_block<Scalar, ZFP_1D_BLOCK_SIZE>(fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
+        auto bits = zfp_encode_block<Scalar, ZFP_1D_BLOCK_SIZE>(acc, fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
         if (variable_rate) {
             block_bits[block_idx] = bits;
         }
@@ -108,11 +113,15 @@ namespace syclZFP {
         auto before = std::chrono::steady_clock::now();
 #endif
         sycl::nd_range<3> kernel_parameters(grid_size * block_size, block_size);
+        auto buf = get_perm_buffer<4>();
         q.submit([&](sycl::handler &cgh) {
+            auto acc = buf.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(cgh);
             cgh.depends_on(init_e);
-            cgh.parallel_for(kernel_parameters, [=](sycl::nd_item<3> item) {
+            cgh.parallel_for<encode1_kernel<Scalar, variable_rate>>(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclEncode1<Scalar, variable_rate>
-                        (item, minbits,
+                        (item,
+                         acc,
+                         minbits,
                          maxbits,
                          maxprec,
                          minexp,
