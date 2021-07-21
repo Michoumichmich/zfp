@@ -38,7 +38,25 @@
 #include "../inline/bitstream.c"
 
 namespace internal {
-    static bool is_contigous3d(const size_t dims[3], const syclZFP::int3_t &stride, int64_t &offset) {
+
+    size_t get_global_range(const sycl::id<3> &dims) {
+        size_t res = 1;
+        if (dims[0] != 0) res *= dims[0];
+        if (dims[1] != 0) res *= dims[1];
+        if (dims[2] != 0) res *= dims[2];
+        return res;
+    }
+
+    int count_used_dims(const sycl::id<3> &dims) {
+        int d = 0;
+        if (dims[2] != 0) d++;
+        if (dims[1] != 0) d++;
+        if (dims[0] != 0) d++;
+        return d;
+    }
+
+
+    static bool is_contigous3d(const sycl::id<3> dims, const syclZFP::int3_t &stride, int64_t &offset) {
         int64_t idims[3];
         idims[0] = (int64_t) dims[0];
         idims[1] = (int64_t) dims[1];
@@ -57,7 +75,7 @@ namespace internal {
         return (imax - imin + 1 == ns);
     }
 
-    static bool is_contigous2d(const size_t dims[3], const syclZFP::int3_t &stride, int64_t &offset) {
+    static bool is_contigous2d(const sycl::id<3> dims, const syclZFP::int3_t &stride, int64_t &offset) {
         int64_t idims[2];
         idims[0] = (int64_t) dims[1]; //Y
         idims[1] = (int64_t) dims[2]; //X
@@ -78,70 +96,61 @@ namespace internal {
         return std::abs(stride) == 1;
     }
 
-    static bool is_contigous(const size_t dims[3], const syclZFP::int3_t &stride, int64_t &offset) {
-        int d = 0;
-
-        if (dims[2] != 0) d++;
-        if (dims[1] != 0) d++;
-        if (dims[0] != 0) d++;
-
-        if (d == 3) {
-            return is_contigous3d(dims, stride, offset);
-        } else if (d == 2) {
-            return is_contigous2d(dims, stride, offset);
-        } else {
-            return is_contigous1d(dims[2], stride.x, offset);
+    static bool is_contigous(const sycl::id<3> dims, const syclZFP::int3_t &stride, int64_t &offset) {
+        int d = count_used_dims(dims);
+        switch (d) {
+            case 1:
+                return is_contigous1d(dims[2], stride.x, offset);
+            case 2:
+                return is_contigous2d(dims, stride, offset);
+            case 3:
+                return is_contigous3d(dims, stride, offset);
+            default:
+                assert(false);
         }
-
     }
 
 //
 // encode expects device pointers
 //
     template<typename T, bool variable_rate>
-    size_t encode(sycl::queue &q, sycl::id<3> dims, syclZFP::int3_t stride, int minbits, int maxbits,
-                  int maxprec, int minexp, T *d_data, Word *d_stream,
+    size_t encode(sycl::queue &q,
+                  sycl::id<3> dims,
+                  syclZFP::int3_t stride,
+                  int minbits,
+                  int maxbits,
+                  int maxprec,
+                  int minexp,
+                  T *d_data,
+                  Word *d_stream,
                   ushort *d_bitlengths) {
 
-        int d = 0;
-        size_t len = 1;
-        for (int i = 0; i < 3; ++i) {
-            if (dims[i] != 0) {
-                d++;
-                len *= dims[i];
-            }
-        }
+        const int d = count_used_dims(dims);
+        const size_t len = get_global_range(dims);
 
         size_t stream_size = 0;
         if (d == 1) {
-            size_t dim = dims[2];
-            int sx = stride.x;
-            stream_size = syclZFP::encode1<T, variable_rate>(q, dim, sx, d_data, d_stream, d_bitlengths,
-                                                             minbits, maxbits, maxprec, minexp);
+            stream_size = syclZFP::encode1<T, variable_rate>(q, dims[2], stride.x, d_data, d_stream, d_bitlengths, minbits, maxbits, maxprec, minexp);
         } else if (d == 2) {
             sycl::id<2> ndims(dims[1], dims[2]);
             syclZFP::int2_t s{stride.y, stride.x};
-            stream_size = syclZFP::encode2<T, variable_rate>(q, ndims, s, d_data, d_stream, d_bitlengths,
-                                                             minbits, maxbits, maxprec, minexp);
+            stream_size = syclZFP::encode2<T, variable_rate>(q, ndims, s, d_data, d_stream, d_bitlengths, minbits, maxbits, maxprec, minexp);
         } else if (d == 3) {
-            sycl::id<3> ndims(dims[0], dims[1], dims[2]);
-            stream_size = syclZFP::encode3<T, variable_rate>(q, ndims, stride, d_data, d_stream, d_bitlengths,
-                                                             minbits, maxbits, maxprec, minexp);
+            stream_size = syclZFP::encode3<T, variable_rate>(q, dims, stride, d_data, d_stream, d_bitlengths, minbits, maxbits, maxprec, minexp);
         }
         return stream_size;
     }
 
     template<typename T>
-    size_t decode(sycl::queue &q, sycl::id<3> ndims, syclZFP::int3_t stride, int bits_per_block, Word *stream, T *out) {
-        int d = 0;
-        size_t out_size = 1;
+    size_t decode(sycl::queue &q,
+                  sycl::id<3> ndims,
+                  syclZFP::int3_t stride,
+                  int bits_per_block,
+                  Word *stream,
+                  T *out) {
+        const int d = count_used_dims(ndims);
+        const size_t out_size = get_global_range(ndims);
         size_t stream_bytes = 0;
-        for (int i = 0; i < 3; ++i) {
-            if (ndims[i] != 0) {
-                d++;
-                out_size *= ndims[i];
-            }
-        }
 
         if (d == 3) {
             stream_bytes = syclZFP::decode3<T>(q, ndims, stride, stream, out, bits_per_block);
@@ -212,19 +221,9 @@ namespace internal {
             return field->data;
         }
 
-        size_t dims[3];
-        dims[2] = field->nx;
-        dims[1] = field->ny;
-        dims[0] = field->nz;
-
-        size_t type_size = zfp_type_size(field->type);
-
-        size_t field_size = 1;
-        for (auto dim : dims) {
-            if (dim != 0) {
-                field_size *= dim;
-            }
-        }
+        sycl::id<3> dims{field->nz, field->ny, field->nx};
+        const size_t type_size = zfp_type_size(field->type);
+        const size_t field_size = get_global_range(dims);
 
         bool contig = internal::is_contigous(dims, stride, offset);
 
@@ -247,21 +246,9 @@ namespace internal {
             return field->data;
         }
 
-        //sycl::id<3> dims{field->nz, field->ny, field->nx};
-        size_t dims[3];
-        dims[2] = field->nx;
-        dims[1] = field->ny;
-        dims[0] = field->nz;
-
-        size_t type_size = zfp_type_size(field->type);
-
-        size_t field_size = 1;
-        for (auto dim : dims) {
-            if (dim != 0) {
-                field_size *= dim;
-            }
-        }
-
+        sycl::id<3> dims{field->nz, field->ny, field->nx};
+        const size_t type_size = zfp_type_size(field->type);
+        const size_t field_size = get_global_range(dims);
         bool contig = internal::is_contigous(dims, stride, offset);
 
         void *d_data = nullptr;
@@ -298,8 +285,7 @@ namespace internal {
         return d_bitlengths;
     }
 
-    void cleanup_device_nbits(sycl::queue &q, zfp_stream *stream, const zfp_field *field,
-                              ushort *d_bitlengths, int variable_rate, int copy) {
+    void cleanup_device_nbits(sycl::queue &q, zfp_stream *stream, const zfp_field *field, ushort *d_bitlengths, int variable_rate, int copy) {
         if (!variable_rate)
             return;
 
@@ -313,8 +299,7 @@ namespace internal {
         sycl::free(d_bitlengths, q);
     }
 
-    static void setup_device_chunking(int *chunk_size, unsigned long long **d_offsets, size_t *lcubtemp,
-                                      void **d_cubtemp, int num_sm, int variable_rate) {
+    static void setup_device_chunking(int *chunk_size, size_t **d_offsets, size_t *lcubtemp, void **d_cubtemp, int num_sm, int variable_rate) {
         if (!variable_rate)
             return;
 #ifdef HAS_VARIABLE
@@ -322,7 +307,7 @@ namespace internal {
         // Assuming 1 thread = 1 ZFP block,
         // launching 1024 threads per SM should give a decent occupancy
         *chunk_size = num_sm * 1024;
-        size_t size = (*chunk_size + 1) * sizeof(unsigned long long);
+        size_t size = (*chunk_size + 1) * sizeof(size_t);
 #if (CUDART_VERSION >= 11020)
         cudaMallocAsync(d_offsets, size, 0);
 #else
@@ -364,7 +349,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
         // Reversible mode not supported on GPU
         return 0;
     }
-    sycl::queue q{sycl::gpu_selector{}};
+    sycl::queue q{sycl::host_selector{}};
 
 #ifdef VERBOSE_SYCL
     std::cout << "Compressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
@@ -393,7 +378,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
     ushort *d_bitlengths = internal::setup_device_nbits_compress(q, stream, field, variable_rate);
 
     int chunk_size;
-    unsigned long long *d_offsets;
+    size_t *d_offsets;
     size_t lcubtemp;
     void *d_cubtemp;
     internal::setup_device_chunking(&chunk_size, &d_offsets, &lcubtemp, &d_cubtemp, num_sm, variable_rate);
@@ -454,7 +439,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
             syclZFP::chunk_process_launch((uint *) d_stream, d_offsets, i, cur_blocks, last_chunk, buffer_maxbits, num_sm);
         }
         // The total length in bits is now in the base of the prefix sum.
-        q.memcpy(&stream_bytes, d_offsets, sizeof(unsigned long long)).wait();
+        q.memcpy(&stream_bytes, d_offsets, sizeof(size_t)).wait();
         stream_bytes = (stream_bytes + 7) / 8;
     }
 #endif
@@ -529,10 +514,7 @@ void sycl_decompress(zfp_stream *stream, zfp_field *field) {
     }
 
     size_t type_size = zfp_type_size(field->type);
-    size_t field_size = 1;
-    if (dims[2] != 0) field_size *= dims[2];
-    if (dims[1] != 0) field_size *= dims[1];
-    if (dims[0] != 0) field_size *= dims[0];
+    size_t field_size = internal::get_global_range(dims);
 
 
     size_t bytes = type_size * field_size;

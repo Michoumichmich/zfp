@@ -1,11 +1,11 @@
 #pragma once
+#include <cctype>
 
 namespace syclZFP {
 
 #define index_3d(x, y, z) ((x) + 4 * ((y) + 4 * (z)))
 
-    static const unsigned char
-            perm_3d[64] = {
+    static const uchar perm_3d[64] = {
             index_3d(0, 0, 0), //  0 : 0
 
             index_3d(1, 0, 0), //  1 : 1
@@ -93,7 +93,7 @@ namespace syclZFP {
 
 #undef index_3d
 
-    static const unsigned char perm_1[4] =
+    static const uchar perm_1[4] =
             {
                     0, 1, 2, 3
             };
@@ -101,7 +101,7 @@ namespace syclZFP {
 #define index(i, j) ((i) + 4 * (j))
 
 /* order coefficients (i, j) by i + j, then i^2 + j^2 */
-    static const unsigned char perm_2[16] = {
+    static const uchar perm_2[16] = {
             index(0, 0), /*  0 : 0 */
 
             index(1, 0), /*  1 : 1 */

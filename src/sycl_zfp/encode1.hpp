@@ -33,7 +33,6 @@ namespace syclZFP {
             const size_t padded_dim,
             const size_t tot_blocks) {
 
-        typedef long long int ll;
         const size_t block_idx = item.get_global_linear_id();
 
         if (block_idx >= tot_blocks) {
