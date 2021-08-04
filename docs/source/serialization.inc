@@ -142,10 +142,10 @@ is to be stored in the header.  The header is also compatible with the |zfp|
 ----
 
 .. _header_ctor_buffer:
-.. cpp:function:: header::header(const void* buffer, size_t size_bytes = 0)
+.. cpp:function:: header::header(const void* buffer, size_t bytes = 0)
 
   Deserialize header from memory buffer given by *buffer* of optional
-  size *size_bytes*.  This memory buffer is obtained from an existing
+  size *bytes*.  This memory buffer is obtained from an existing
   header during serialization via :cpp:func:`header::data` and
   :cpp:func:`header::size_bytes`.  The constructor throws an
   :ref:`exception <exception>` upon failure.
@@ -186,9 +186,12 @@ is to be stored in the header.  The header is also compatible with the |zfp|
 
 ----
 
-.. cpp:function:: virtual size_t header::size_bytes() const = 0
+.. cpp:function:: virtual size_t header::size_bytes(uint mask = ZFP_DATA_HEADER) const = 0
 
-  Return header size in bytes.
+  When *mask* = :c:macro:`ZFP_DATA_HEADER`, return header payload size in
+  bytes pointed to by :cpp:func:`header::data`.  Only those bytes are needed
+  to (de)serialize a header.  The header object stores additional (redundant)
+  metadata whose size can be queried via :c:macro:`ZFP_DATA_META`.
 
 .. index::
    single: Exceptions

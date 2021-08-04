@@ -22,7 +22,7 @@
 #define DUMMY_VAL 99
 
 struct setupVars {
-  uint dimLens[4];
+  size_t dimLens[4];
   Scalar* dataArr;
   void* buffer;
   zfp_stream* stream;
@@ -160,7 +160,7 @@ setupZfpStream(struct setupVars* bundle)
 #if DIMS >= 4
   bundle->dimLens[3] = BLOCK_SIDE_LEN;
 #endif
-  uint* n = bundle->dimLens;
+  size_t* n = bundle->dimLens;
 
   zfp_type type = ZFP_TYPE;
   zfp_field* field;
@@ -230,10 +230,10 @@ teardown(void **state)
   return 0;
 }
 
-uint
+size_t
 encodeBlockStrided(zfp_stream* stream, Scalar* dataArr)
 {
-  uint numBitsWritten;
+  size_t numBitsWritten;
   switch (DIMS) {
     case 1:
       numBitsWritten = _t2(zfp_encode_block_strided, Scalar, 1)(stream, dataArr, SX);
@@ -252,10 +252,10 @@ encodeBlockStrided(zfp_stream* stream, Scalar* dataArr)
   return numBitsWritten;
 }
 
-uint
+size_t
 encodePartialBlockStrided(zfp_stream* stream, Scalar* dataArr)
 {
-  uint numBitsWritten;
+  size_t numBitsWritten;
   switch (DIMS) {
     case 1:
       numBitsWritten = _t2(zfp_encode_partial_block_strided, Scalar, 1)(stream, dataArr, PX, SX);
@@ -278,14 +278,13 @@ static void
 when_seededRandomDataGenerated_expect_ChecksumMatches(void **state)
 {
   struct setupVars *bundle = *state;
-
+  ptrdiff_t s[4] = {SX, SY, SZ, SW};
   size_t n[4];
   int i;
+
   for (i = 0; i < 4; i++) {
     n[i] = (i < DIMS) ? BLOCK_SIDE_LEN : 0;
   }
-
-  int s[4] = {SX, SY, SZ, SW};
 
   UInt checksum = _catFunc2(hashStridedArray, SCALAR_BITS)((const UInt*)bundle->dataArr, n, s);
   uint64 key1, key2;
@@ -301,7 +300,7 @@ _catFunc3(given_, DIM_INT_STR, Block_when_EncodeBlockStrided_expect_ReturnValRef
   zfp_stream* stream = bundle->stream;
   bitstream* s = zfp_stream_bit_stream(stream);
 
-  uint returnValBits = encodeBlockStrided(stream, bundle->dataArr);
+  size_t returnValBits = encodeBlockStrided(stream, bundle->dataArr);
   // do not flush, otherwise extra zeros included in count
 
   assert_int_equal(returnValBits, stream_wtell(s));
@@ -362,7 +361,7 @@ _catFunc3(given_, DIM_INT_STR, Block_when_EncodePartialBlockStrided_expect_Retur
   zfp_stream* stream = bundle->stream;
   bitstream* s = zfp_stream_bit_stream(stream);
 
-  uint returnValBits = encodePartialBlockStrided(stream, bundle->dataArr);
+  size_t returnValBits = encodePartialBlockStrided(stream, bundle->dataArr);
   // do not flush, otherwise extra zeros included in count
 
   assert_int_equal(returnValBits, stream_wtell(s));
