@@ -744,7 +744,7 @@ uint zfp_block_maxbits(const zfp_stream* zfp, const zfp_field* field)
 }
 
 
-zfp_stream_maximum_size(const zfp_stream* zfp, const zfp_field* field)
+size_t zfp_stream_maximum_size(const zfp_stream* zfp, const zfp_field* field)
 {
   uint maxbits = zfp_block_maxbits (zfp, field);
   if (!maxbits)
