@@ -19,6 +19,7 @@
 .. |4by4| replace:: 4 |times| 4
 .. |4by4by4| replace:: 4 |times| 4 |times| 4
 .. |4by4by4by4| replace:: 4 |times| 4 |times| 4 |times| 4
+.. |proxyrelease| replace:: 0.5.2
 .. |omprelease| replace:: 0.5.3
 .. |dcrelease| replace:: 0.5.3
 .. |4drelease| replace:: 0.5.4
@@ -36,3 +37,4 @@
 .. |4darrrelease| replace:: 0.5.6
 .. |fieldrelease| replace:: 0.5.6
 .. |carrrelease| replace:: 0.5.6
+.. |cpprelease| replace:: 0.5.6

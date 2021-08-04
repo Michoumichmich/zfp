@@ -13,7 +13,7 @@ should conform to both the ISO C89 and C99 standards.  The C++ array classes
 are implemented entirely in header files and can be included as is, but since
 they call the compression library, applications must link with |libzfp|.
 
-|zfp| is preferably built using `CMake <https://cmake.org>`_, although the
+|zfp| is preferably built using `CMake <https://cmake.org>`__, although the
 core library can also be built using GNU make on Linux, macOS, and MinGW.
 |zfp| has successfully been built and tested using these compilers:
 
@@ -34,7 +34,7 @@ C++11, and C++14.
 CMake Builds
 ------------
 
-To build |zfp| using `CMake <https://cmake.org>`_ on Linux or macOS, start
+To build |zfp| using `CMake <https://cmake.org>`__ on Linux or macOS, start
 a Unix shell and type::
 
     cd zfp-0.5.5
@@ -48,7 +48,7 @@ To also build the examples, replace the cmake line with::
     cmake -DBUILD_EXAMPLES=ON ..
 
 By default, CMake builds will attempt to locate and use
-`OpenMP <http://www.openmp.org>`_.  To disable OpenMP, type::
+`OpenMP <http://www.openmp.org>`__.  To disable OpenMP, type::
 
     cmake -DZFP_WITH_OPENMP=OFF ..
 
@@ -71,8 +71,8 @@ change the cmake line to also build the example programs.
 GNU Builds 
 ----------
 
-To build |zfp| using `gcc <https://gcc.gnu.org>`_ without
-`OpenMP <http://www.openmp.org>`_, type::
+To build |zfp| using `gcc <https://gcc.gnu.org>`__ without
+`OpenMP <http://www.openmp.org>`__, type::
 
     cd zfp-0.5.5
     gmake
@@ -185,7 +185,7 @@ Regardless of the settings below, |libzfp| will always be built.
 .. c:macro:: BUILD_TESTING
 
   Build |testzfp| and (when on the GitHub
-  `develop branch <https://github.com/LLNL/zfp/tree/develop>`_) unit tests.
+  `develop branch <https://github.com/LLNL/zfp/tree/develop>`__) unit tests.
   Default: on.
 
 
@@ -245,7 +245,7 @@ in the same manner that :ref:`build targets <targets>` are specified, e.g.,
   GPU compression and decompression.  When enabled, CUDA and a compatible
   host compiler must be installed.  For a full list of compatible compilers,
   please consult the
-  `NVIDIA documentation <https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/>`_.
+  `NVIDIA documentation <https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/>`__.
   If a CUDA installation is in the user's path, it will be
   automatically found by CMake.  Alternatively, the CUDA binary directory 
   can be specified using the :envvar:`CUDA_BIN_DIR` environment variable.
@@ -268,7 +268,11 @@ in the same manner that :ref:`build targets <targets>` are specified, e.g.,
   effective at reducing bias, but is invoked only with
   :ref:`fixed-precision <mode-fixed-precision>` and
   :ref:`fixed-accuracy <mode-fixed-accuracy>` compression modes.
-  Either of these rounding modes break the regression tests.
+  Both of these rounding modes break the regression tests since they alter
+  the compressed or decompressed representation, but they may be used with
+  libraries built with the default rounding mode, :code:`ZFP_ROUND_NEVER`,
+  and versions of |zfp| that do not support a rounding mode with no adverse
+  effects.
   Default: :code:`ZFP_ROUND_NEVER`.
 
 .. c:macro:: ZFP_WITH_TIGHT_ERROR
@@ -281,6 +285,22 @@ in the same manner that :ref:`build targets <targets>` are specified, e.g.,
   enabled, the observed maximum absolute error is closer to the tolerance and
   the compression ratio is increased.  This feature requires the rounding mode
   to be :code:`ZFP_ROUND_FIRST` or :code:`ZFP_ROUND_LAST`.
+  Default: undefined/off.
+
+.. c:macro:: ZFP_WITH_DAZ
+
+  When enabled, blocks consisting solely of subnormal floating-point numbers
+  (tiny numbers close to zero) are treated as blocks of all zeros
+  (DAZ = denormals-are-zero).  The main purpose of this option is to avoid the
+  potential for floating-point overflow in the |zfp| implementation that may
+  occur in step 2 of the
+  :ref:`lossy compression algorithm <algorithm-lossy>` when converting to
+  |zfp|'s block-floating-point representation (see
+  `Issue #119 <https://github.com/LLNL/zfp/issues/119>`__).
+  Such overflow tends to be benign but loses all precision and usually
+  results in "random" subnormals upon decompression.  When enabled, compressed
+  streams may differ slightly but are decompressed correctly by libraries
+  built without this option.  This option may break some regression tests.
   Default: undefined/off.
 
 .. c:macro:: ZFP_WITH_ALIGNED_ALLOC
@@ -366,14 +386,28 @@ in the sections below.
 CMake
 ^^^^^
 
-CMake builds require version 3.1 or later on Linux and macOS and version
-3.4 or later on Windows.  CMake is available `here <https://cmake.org>`_.
+CMake builds require version 3.9 or later.  CMake is available
+`here <https://cmake.org>`__.
+
+OpenMP
+^^^^^^
+
+OpenMP support requires OpenMP 2.0 or later.
 
 CUDA
 ^^^^
 
-CUDA support requires CMake and a compatible host compiler (see
-:c:macro:`ZFP_WITH_CUDA`).
+CUDA support requires CUDA 7.0 or later, CMake, and a compatible host
+compiler (see :c:macro:`ZFP_WITH_CUDA`).
+
+C/C++
+^^^^^
+
+The |zfp| C library and |cfp| C wrappers around the compressed-array
+classes conform to the C90 standard
+(`ISO/IEC 9899:1990 <https://www.iso.org/standard/17782.html>`__).
+The C++ classes conform to the C++98 standard
+(`ISO/IEC 14882:1998 <https://www.iso.org/standard/25845.html>`__).
 
 Python
 ^^^^^^

@@ -108,6 +108,7 @@ namespace internal {
             default:
                 assert(false);
         }
+        return false;
     }
 
 //
