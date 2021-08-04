@@ -12,7 +12,7 @@
 #include "utils/zfpHash.h"
 
 struct setupVars {
-  uint dimLens[4];
+  size_t dimLens[4];
   Scalar* dataArr;
   void* buffer;
   size_t bufsizeBytes;
@@ -22,10 +22,10 @@ struct setupVars {
 static void
 populateInitialArray(Scalar** dataArrPtr)
 {
+  size_t i;
   *dataArrPtr = malloc(sizeof(Scalar) * BLOCK_SIZE);
   assert_non_null(*dataArrPtr);
 
-  int i;
   for (i = 0; i < BLOCK_SIZE; i++) {
 #ifdef FL_PT_DATA
     (*dataArrPtr)[i] = nextSignedRandFlPt();
@@ -66,8 +66,8 @@ populateInitialArraySpecial(Scalar* dataArr, int index)
     UINT64C(0x7ff4000000000000), // sNaN
   };
 #endif
-
   size_t i;
+
   for (i = 0; i < BLOCK_SIZE; i++) {
 #ifdef FL_PT_DATA
     // generate special values
@@ -105,7 +105,7 @@ setupZfpStream(struct setupVars* bundle, int specialValueIndex)
 #if DIMS >= 4
   bundle->dimLens[3] = BLOCK_SIDE_LEN;
 #endif
-  uint* n = bundle->dimLens;
+  size_t* n = bundle->dimLens;
 
   zfp_type type = ZFP_TYPE;
   zfp_field* field;
@@ -214,7 +214,7 @@ _catFunc3(given_, DIM_INT_STR, Block_when_DecodeBlock_expect_ReturnValReflectsNu
   zfp_stream_flush(stream);
   zfp_stream_rewind(stream);
 
-  uint returnValBits = _t2(zfp_decode_block, Scalar, DIMS)(stream, bundle->dataArr);
+  size_t returnValBits = _t2(zfp_decode_block, Scalar, DIMS)(stream, bundle->dataArr);
 
   assert_int_equal(returnValBits, stream_rtell(s));
 }

@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 
+# Enable MACOSX_RPATH by default
+cmake_policy(SET CMP0042 NEW)
+
 # Fail immediately if not using an out-of-source build
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
   message(FATAL_ERROR
@@ -50,7 +53,9 @@ if(MSVC)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
   # Silence extraneous Visual Studio specific warnings
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS /wd4146 /wd4305)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS)
+  add_compile_options(/wd4146)
+  add_compile_options(/wd4305)
 endif()
 
 # Suggest C99
@@ -116,6 +121,8 @@ set_property(CACHE PPM_CHROMA PROPERTY STRINGS "1;2")
 set(ZFP_ROUNDING_MODE ZFP_ROUND_NEVER CACHE STRING
   "Rounding mode for reducing bias")
 set_property(CACHE ZFP_ROUNDING_MODE PROPERTY STRINGS "ZFP_ROUND_NEVER;ZFP_ROUND_FIRST;ZFP_ROUND_LAST")
+
+option(ZFP_WITH_DAZ "Treat subnormals as zero to avoid overflow" OFF)
 
 option(ZFP_WITH_CUDA "Enable CUDA parallel compression" OFF)
 
@@ -229,6 +236,10 @@ if(ZFP_WITH_TIGHT_ERROR)
     message(FATAL_ERROR "ZFP_WITH_TIGHT_ERROR requires ZFP_ROUND_FIRST or ZFP_ROUND_LAST rounding mode")
   endif()
   list(APPEND zfp_private_defs ZFP_WITH_TIGHT_ERROR)
+endif()
+
+if(ZFP_WITH_DAZ)
+  list(APPEND zfp_private_defs ZFP_WITH_DAZ)
 endif()
 
 if(ZFP_WITH_ALIGNED_ALLOC)

@@ -15,23 +15,6 @@ const char* const zfp_version_string = "zfp version " ZFP_VERSION_STRING " (May 
 
 /* private functions ------------------------------------------------------- */
 
-static uint
-type_precision(zfp_type type)
-{
-  switch (type) {
-    case zfp_type_int32:
-      return (uint)(CHAR_BIT * sizeof(int32));
-    case zfp_type_int64:
-      return (uint)(CHAR_BIT * sizeof(int64));
-    case zfp_type_float:
-      return (uint)(CHAR_BIT * sizeof(float));
-    case zfp_type_double:
-      return (uint)(CHAR_BIT * sizeof(double));
-    default:
-      return 0;
-  }
-}
-
 static size_t
 field_index_span(const zfp_field* field, ptrdiff_t* min, ptrdiff_t* max)
 {
@@ -143,7 +126,7 @@ zfp_field_alloc()
 }
 
 zfp_field*
-zfp_field_1d(void* data, zfp_type type, uint nx)
+zfp_field_1d(void* data, zfp_type type, size_t nx)
 {
   zfp_field* field = zfp_field_alloc();
   if (field) {
@@ -155,7 +138,7 @@ zfp_field_1d(void* data, zfp_type type, uint nx)
 }
 
 zfp_field*
-zfp_field_2d(void* data, zfp_type type, uint nx, uint ny)
+zfp_field_2d(void* data, zfp_type type, size_t nx, size_t ny)
 {
   zfp_field* field = zfp_field_alloc();
   if (field) {
@@ -168,7 +151,7 @@ zfp_field_2d(void* data, zfp_type type, uint nx, uint ny)
 }
 
 zfp_field*
-zfp_field_3d(void* data, zfp_type type, uint nx, uint ny, uint nz)
+zfp_field_3d(void* data, zfp_type type, size_t nx, size_t ny, size_t nz)
 {
   zfp_field* field = zfp_field_alloc();
   if (field) {
@@ -182,7 +165,7 @@ zfp_field_3d(void* data, zfp_type type, uint nx, uint ny, uint nz)
 }
 
 zfp_field*
-zfp_field_4d(void* data, zfp_type type, uint nx, uint ny, uint nz, uint nw)
+zfp_field_4d(void* data, zfp_type type, size_t nx, size_t ny, size_t nz, size_t nw)
 {
   zfp_field* field = zfp_field_alloc();
   if (field) {
@@ -211,9 +194,13 @@ zfp_field_pointer(const zfp_field* field)
 void*
 zfp_field_begin(const zfp_field* field)
 {
-  ptrdiff_t min;
-  field_index_span(field, &min, NULL);
-  return (void*)((uchar*)field->data + min * (ptrdiff_t)type_precision(field->type));
+  if (field->data) {
+    ptrdiff_t min;
+    field_index_span(field, &min, NULL);
+    return (void*)((uchar*)field->data + min * (ptrdiff_t)zfp_type_size(field->type));
+  }
+  else
+    return NULL;
 }
 
 zfp_type
@@ -225,7 +212,7 @@ zfp_field_type(const zfp_field* field)
 uint
 zfp_field_precision(const zfp_field* field)
 {
-  return type_precision(field->type);
+  return (uint)(CHAR_BIT * zfp_type_size(field->type));
 }
 
 uint
@@ -235,7 +222,7 @@ zfp_field_dimensionality(const zfp_field* field)
 }
 
 size_t
-zfp_field_size(const zfp_field* field, uint* size)
+zfp_field_size(const zfp_field* field, size_t* size)
 {
   if (size)
     switch (zfp_field_dimensionality(field)) {
@@ -252,13 +239,13 @@ zfp_field_size(const zfp_field* field, uint* size)
         size[0] = field->nx;
         break;
     }
-  return (size_t)MAX(field->nx, 1u) * (size_t)MAX(field->ny, 1u) * (size_t)MAX(field->nz, 1u) * (size_t)MAX(field->nw, 1u);
+  return MAX(field->nx, 1u) * MAX(field->ny, 1u) * MAX(field->nz, 1u) * MAX(field->nw, 1u);
 }
 
 size_t
 zfp_field_size_bytes(const zfp_field* field)
 {
-  return field_index_span(field, NULL, NULL) * type_precision(field->type);
+  return field_index_span(field, NULL, NULL) * zfp_type_size(field->type);
 }
 
 size_t
@@ -273,18 +260,18 @@ zfp_field_num_blocks (const zfp_field* field)
 }
 
 zfp_bool
-zfp_field_stride(const zfp_field* field, int* stride)
+zfp_field_stride(const zfp_field* field, ptrdiff_t* stride)
 {
   if (stride)
     switch (zfp_field_dimensionality(field)) {
       case 4:
-        stride[3] = field->sw ? field->sw : (int)(field->nx * field->ny * field->nz);
+        stride[3] = field->sw ? field->sw : (ptrdiff_t)(field->nx * field->ny * field->nz);
         /* FALLTHROUGH */
       case 3:
-        stride[2] = field->sz ? field->sz : (int)(field->nx * field->ny);
+        stride[2] = field->sz ? field->sz : (ptrdiff_t)(field->nx * field->ny);
         /* FALLTHROUGH */
       case 2:
-        stride[1] = field->sy ? field->sy : (int)field->nx;
+        stride[1] = field->sy ? field->sy : (ptrdiff_t)field->nx;
         /* FALLTHROUGH */
       case 1:
         stride[0] = field->sx ? field->sx : 1;
@@ -367,7 +354,7 @@ zfp_field_set_type(zfp_field* field, zfp_type type)
 }
 
 void
-zfp_field_set_size_1d(zfp_field* field, uint n)
+zfp_field_set_size_1d(zfp_field* field, size_t n)
 {
   field->nx = n;
   field->ny = 0;
@@ -376,7 +363,7 @@ zfp_field_set_size_1d(zfp_field* field, uint n)
 }
 
 void
-zfp_field_set_size_2d(zfp_field* field, uint nx, uint ny)
+zfp_field_set_size_2d(zfp_field* field, size_t nx, size_t ny)
 {
   field->nx = nx;
   field->ny = ny;
@@ -385,7 +372,7 @@ zfp_field_set_size_2d(zfp_field* field, uint nx, uint ny)
 }
 
 void
-zfp_field_set_size_3d(zfp_field* field, uint nx, uint ny, uint nz)
+zfp_field_set_size_3d(zfp_field* field, size_t nx, size_t ny, size_t nz)
 {
   field->nx = nx;
   field->ny = ny;
@@ -394,7 +381,7 @@ zfp_field_set_size_3d(zfp_field* field, uint nx, uint ny, uint nz)
 }
 
 void
-zfp_field_set_size_4d(zfp_field* field, uint nx, uint ny, uint nz, uint nw)
+zfp_field_set_size_4d(zfp_field* field, size_t nx, size_t ny, size_t nz, size_t nw)
 {
   field->nx = nx;
   field->ny = ny;
@@ -403,7 +390,7 @@ zfp_field_set_size_4d(zfp_field* field, uint nx, uint ny, uint nz, uint nw)
 }
 
 void
-zfp_field_set_stride_1d(zfp_field* field, int sx)
+zfp_field_set_stride_1d(zfp_field* field, ptrdiff_t sx)
 {
   field->sx = sx;
   field->sy = 0;
@@ -412,7 +399,7 @@ zfp_field_set_stride_1d(zfp_field* field, int sx)
 }
 
 void
-zfp_field_set_stride_2d(zfp_field* field, int sx, int sy)
+zfp_field_set_stride_2d(zfp_field* field, ptrdiff_t sx, ptrdiff_t sy)
 {
   field->sx = sx;
   field->sy = sy;
@@ -421,7 +408,7 @@ zfp_field_set_stride_2d(zfp_field* field, int sx, int sy)
 }
 
 void
-zfp_field_set_stride_3d(zfp_field* field, int sx, int sy, int sz)
+zfp_field_set_stride_3d(zfp_field* field, ptrdiff_t sx, ptrdiff_t sy, ptrdiff_t sz)
 {
   field->sx = sx;
   field->sy = sy;
@@ -430,7 +417,7 @@ zfp_field_set_stride_3d(zfp_field* field, int sx, int sy, int sz)
 }
 
 void
-zfp_field_set_stride_4d(zfp_field* field, int sx, int sy, int sz, int sw)
+zfp_field_set_stride_4d(zfp_field* field, ptrdiff_t sx, ptrdiff_t sy, ptrdiff_t sz, ptrdiff_t sw)
 {
   field->sx = sx;
   field->sy = sy;
@@ -450,28 +437,28 @@ zfp_field_set_metadata(zfp_field* field, uint64 meta)
   switch (dims) {
     case 1:
       /* currently dimensions are limited to 2^32 - 1 */
-      field->nx = (meta & UINT64C(0x0000ffffffff)) + 1; meta >>= 48;
+      field->nx = (size_t)(meta & UINT64C(0x0000ffffffff)) + 1; meta >>= 48;
       field->ny = 0;
       field->nz = 0;
       field->nw = 0;
       break;
     case 2:
-      field->nx = (meta & UINT64C(0xffffff)) + 1; meta >>= 24;
-      field->ny = (meta & UINT64C(0xffffff)) + 1; meta >>= 24;
+      field->nx = (size_t)(meta & UINT64C(0xffffff)) + 1; meta >>= 24;
+      field->ny = (size_t)(meta & UINT64C(0xffffff)) + 1; meta >>= 24;
       field->nz = 0;
       field->nw = 0;
       break;
     case 3:
-      field->nx = (meta & UINT64C(0xffff)) + 1; meta >>= 16;
-      field->ny = (meta & UINT64C(0xffff)) + 1; meta >>= 16;
-      field->nz = (meta & UINT64C(0xffff)) + 1; meta >>= 16;
+      field->nx = (size_t)(meta & UINT64C(0xffff)) + 1; meta >>= 16;
+      field->ny = (size_t)(meta & UINT64C(0xffff)) + 1; meta >>= 16;
+      field->nz = (size_t)(meta & UINT64C(0xffff)) + 1; meta >>= 16;
       field->nw = 0;
       break;
     case 4:
-      field->nx = (meta & UINT64C(0xfff)) + 1; meta >>= 12;
-      field->ny = (meta & UINT64C(0xfff)) + 1; meta >>= 12;
-      field->nz = (meta & UINT64C(0xfff)) + 1; meta >>= 12;
-      field->nw = (meta & UINT64C(0xfff)) + 1; meta >>= 12;
+      field->nx = (size_t)(meta & UINT64C(0xfff)) + 1; meta >>= 12;
+      field->ny = (size_t)(meta & UINT64C(0xfff)) + 1; meta >>= 12;
+      field->nz = (size_t)(meta & UINT64C(0xfff)) + 1; meta >>= 12;
+      field->nw = (size_t)(meta & UINT64C(0xfff)) + 1; meta >>= 12;
       break;
   }
   field->sx = field->sy = field->sz = field->sw = 0;
@@ -723,8 +710,13 @@ zfp_stream_compressed_size(const zfp_stream* zfp)
 
 uint zfp_block_maxbits(const zfp_stream* zfp, const zfp_field* field)
 {
-  int reversible = is_reversible(zfp);
+  zfp_bool reversible = is_reversible(zfp);
   uint dims = zfp_field_dimensionality(field);
+  size_t mx = (MAX(field->nx, 1u) + 3) / 4;
+  size_t my = (MAX(field->ny, 1u) + 3) / 4;
+  size_t mz = (MAX(field->nz, 1u) + 3) / 4;
+  size_t mw = (MAX(field->nw, 1u) + 3) / 4;
+  size_t blocks = mx * my * mz * mw;
   uint values = 1u << (2 * dims);
   uint maxbits = 0;
   if (!dims)
@@ -745,12 +737,13 @@ uint zfp_block_maxbits(const zfp_stream* zfp, const zfp_field* field)
     default:
       return 0;
   }
-  maxbits += values - 1 + values * MIN(zfp->maxprec, type_precision(field->type));
-
-  return maxbits;
+  maxbits += values - 1 + values * MIN(zfp->maxprec, zfp_field_precision(field));
+  maxbits = MIN(maxbits, zfp->maxbits);
+  maxbits = MAX(maxbits, zfp->minbits);
+  return ((ZFP_HEADER_MAX_BITS + blocks * maxbits + stream_word_bits - 1) & ~(stream_word_bits - 1)) / CHAR_BIT;
 }
 
-size_t
+
 zfp_stream_maximum_size(const zfp_stream* zfp, const zfp_field* field)
 {
   uint maxbits = zfp_block_maxbits (zfp, field);
