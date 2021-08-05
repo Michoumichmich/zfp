@@ -36,7 +36,7 @@ using const_perm_accessor = sycl::accessor<uchar, 1, sycl::access::mode::read, s
 #else
 #define LDEXP(x, y) ldexp((x),(y))
 #define FREXP(x, y) frexp((x),(y))
-#define ZFP_ENCODE_ATOMIC_REF_TYPE sycl::atomic_ref<Word, sycl::memory_order::relaxed, sycl::memory_scope::device, address_space::global_space>
+#define ZFP_ENCODE_ATOMIC_REF_TYPE sycl::atomic_ref<Word, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>
 #endif
 
 #endif
