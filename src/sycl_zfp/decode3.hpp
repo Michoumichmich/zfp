@@ -33,7 +33,7 @@ namespace syclZFP {
             const Word *blocks,
             Scalar *out,
             const sycl::id<3> dims,
-            const int3_t stride,
+            const int64_3_t stride,
             const sycl::id<3> padded_dims,
             int maxbits) {
 
@@ -80,7 +80,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode3launch(sycl::queue &q, sycl::id<3> dims, int3_t stride, Word *stream, Scalar *d_data, int maxbits) {
+    size_t decode3launch(sycl::queue &q, sycl::id<3> dims, int64_3_t stride, Word *stream, Scalar *d_data, int maxbits) {
         const int preferred_block_size = 128;
         sycl::range<3> block_size(1, 1, preferred_block_size);
 
@@ -141,7 +141,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    size_t decode3(sycl::queue &q, sycl::id<3> dims, int3_t stride, Word *stream, Scalar *d_data, int maxbits) {
+    size_t decode3(sycl::queue &q, sycl::id<3> dims, int64_3_t stride, Word *stream, Scalar *d_data, int maxbits) {
         return decode3launch<Scalar>(q, dims, stride, stream, d_data, maxbits);
     }
 

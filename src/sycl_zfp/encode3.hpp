@@ -50,7 +50,7 @@ namespace syclZFP {
             Word *stream,
             ushort *block_bits,
             const sycl::id<3> dims,
-            const int3_t stride,
+            const int64_3_t stride,
             const sycl::id<3> padded_dims,
             const size_t tot_blocks
             //sycl::stream os
@@ -105,7 +105,7 @@ namespace syclZFP {
     size_t encode3launch(
             sycl::queue &q,
             sycl::id<3> dims,
-            int3_t stride,
+            int64_3_t stride,
             const Scalar *d_data,
             Word *stream,
             ushort *d_block_bits,
@@ -190,7 +190,7 @@ namespace syclZFP {
     size_t encode3(
             sycl::queue &q,
             sycl::id<3> dims,
-            int3_t stride,
+            int64_3_t stride,
             Scalar *d_data,
             Word *stream,
             ushort *d_block_bits,

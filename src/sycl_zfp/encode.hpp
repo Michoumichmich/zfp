@@ -254,7 +254,7 @@ namespace syclZFP {
 
             Word b = bits - left;
             Word add = b << shift;
-            ZFP_ENCODE_ATOMIC_REF_TYPE ref(m_stream[write_index]);
+            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref(m_stream[write_index]);
             ref += add;
             //   m_stream[write_index] += add;
 
@@ -263,7 +263,7 @@ namespace syclZFP {
 
             //if (straddle) {
             Word rem = b >> (sizeof(Word) * 8 - (uint) shift);
-            ZFP_ENCODE_ATOMIC_REF_TYPE ref_next(m_stream[write_index + 1]);
+            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref_next(m_stream[write_index + 1]);
             ref_next += straddle * rem;
             //        m_stream[write_index + 1] += rem;
             // }
@@ -283,7 +283,7 @@ namespace syclZFP {
             // uint zero_shift = sizeof(Word) * 8 - n_bits;
 
             Word add = (Word) bit << shift;
-            ZFP_ENCODE_ATOMIC_REF_TYPE ref(m_stream[write_index]);
+            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref(m_stream[write_index]);
             ref += add;
             //m_stream[write_index] += add;
             m_current_bit += 1;

@@ -2,11 +2,11 @@ function(zfp_add_test dims type bits)
   if(NOT DEFINED ZFP_OMP_TESTS_ONLY)
     set(serial_test_name testZfpSerial${dims}d${type})
     add_executable(${serial_test_name} ${serial_test_name}.c)
-    target_link_libraries(${serial_test_name}
+    target_link_libraries(${serial_test_name} PRIVATE
       cmocka zfp zfpHashLib genSmoothRandNumsLib stridedOperationsLib
       zfpChecksumsLib zfpCompressionParamsLib zfpTimerLib)
     if(HAVE_LIBM_MATH)
-      target_link_libraries(${serial_test_name} m)
+      target_link_libraries(${serial_test_name} PRIVATE m)
     endif()
 
     target_compile_definitions(${serial_test_name} PRIVATE ${zfp_private_defs})
@@ -22,12 +22,12 @@ function(zfp_add_test dims type bits)
     add_executable(${omp_test_name} ${omp_test_name}.c)
     target_compile_options(${omp_test_name} PRIVATE ${OpenMP_C_FLAGS})
     target_compile_definitions(${omp_test_name} PRIVATE ${zfp_private_defs})
-    target_link_libraries(${omp_test_name}
+    target_link_libraries(${omp_test_name} PRIVATE
       cmocka zfp zfpHashLib genSmoothRandNumsLib stridedOperationsLib
       zfpChecksumsLib zfpTimerLib zfpCompressionParamsLib
       ${OpenMP_C_LIBRARIES})
     if(HAVE_LIBM_MATH)
-      target_link_libraries(${omp_test_name} m)
+      target_link_libraries(${omp_test_name} PRIVATE m)
     endif()
     add_test(NAME ${omp_test_name} COMMAND ${omp_test_name})
     set_property(TEST ${omp_test_name} PROPERTY RUN_SERIAL TRUE)
@@ -40,11 +40,11 @@ function(zfp_add_test dims type bits)
       set(cuda_test_name testZfpCuda${dims}d${type})
       add_executable(${cuda_test_name} ${cuda_test_name}.c)
       target_compile_definitions(${cuda_test_name} PRIVATE ${zfp_private_defs})
-      target_link_libraries(${cuda_test_name}
+      target_link_libraries(${cuda_test_name} PRIVATE
         cmocka zfp zfpHashLib genSmoothRandNumsLib stridedOperationsLib
         zfpChecksumsLib zfpTimerLib zfpCompressionParamsLib)
       if(HAVE_LIBM_MATH)
-        target_link_libraries(${cuda_test_name} m)
+        target_link_libraries(${cuda_test_name} PRIVATE m)
       endif()
       add_test(NAME ${cuda_test_name} COMMAND ${cuda_test_name})
       set_property(TEST ${cuda_test_name} PROPERTY RUN_SERIAL TRUE)

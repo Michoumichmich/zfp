@@ -13,7 +13,7 @@ include(ExternalProject)
 ExternalProject_Add(
   cmocka_cloned
   GIT_REPOSITORY    https://git.cryptomilk.org/projects/cmocka.git
-  GIT_TAG           master
+  GIT_TAG           cmocka-1.1.0
   SOURCE_DIR        "${CMAKE_BINARY_DIR}/cmocka-src"
   BINARY_DIR        "${CMAKE_BINARY_DIR}/cmocka-build"
   CMAKE_ARGS        ${CMOCKA_ARGS}

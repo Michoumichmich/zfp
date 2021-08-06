@@ -17,7 +17,7 @@ endif ()
 
 if (ZFP_WITH_CUDA AND NOT DEFINED ZFP_OMP_TESTS_ONLY)
     add_executable(testCuda testCuda.c)
-    target_link_libraries(testCuda PRIVATEcmocka zfp)
+    target_link_libraries(testCuda PRIVATE cmocka zfp)
     add_test(NAME testCuda COMMAND testCuda)
 endif ()
 
