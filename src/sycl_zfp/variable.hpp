@@ -72,25 +72,25 @@ namespace syclZFP {
     inline void process(sycl::nd_item<2> item, bool valid_stream,
                         size_t &offset0,     // Offset in bits of the first bitstream of the block
                         const size_t offset, // Offset in bits for this stream
-                        const int &length_bits,          // length of this stream
+                        const size_t &length_bits,          // length of this stream
                         const int &add_padding,          // padding at the end of the block, in bits
                         const int &tid,                  // global thread index inside the thread block
                         const uint *sm_in,               // shared memory containing the compressed input data
                         uint *sm_out,                    // shared memory to stage the compacted compressed data
-                        uint maxpad32,                   // Leading dimension of the shared memory (padded maxbits)
+                        int maxpad32,                    // Leading dimension of the shared memory (padded maxbits)
                         uint *sm_length,                 // shared memory to compute a prefix-sum inside the block
                         uint *output)                    // output pointer
     {
         // All streams in the block will align themselves on the first stream of the block
-        int misaligned0 = offset0 & 31;
-        int misaligned = offset & 31;
-        int off_smin = item.get_local_id(0) * maxpad32;
-        int off_smout = ((int) (offset - offset0) + misaligned0) / 32;
+        size_t misaligned0 = offset0 & 31;
+        size_t misaligned = offset & 31;
+        size_t off_smin = item.get_local_id(0) * (size_t) maxpad32;
+        int off_smout = ((int) offset - (int) offset0 + (int) misaligned0) / 32;
         offset0 /= 32;
 
         if (valid_stream) {
             // Loop on the whole bitstream (including misalignment), 32 bits per thread
-            for (int i = (int) item.get_local_id(1); i * 32 < misaligned + length_bits; i += tile_size) {
+            for (size_t i = item.get_local_id(1); i * 32 < misaligned + length_bits; i += tile_size) {
                 // Merge 2 values to create an aligned value
                 uint v0 = i > 0 ? sm_in[off_smin + i - 1] : 0;
                 uint v1 = sm_in[off_smin + i];
@@ -216,8 +216,8 @@ namespace syclZFP {
             size_t writing_to = (offsets[last_stream] + 31) / 32;
             size_t reading_from = (first_stream_chunk + i) * maxbits;
             if (writing_to >= reading_from)
-                //      grid.sync();
-                void(1);
+                grid.sync();
+                //    void(1);
             else
                 item.barrier(sycl::access::fence_space::local_space);
 
