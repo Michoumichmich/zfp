@@ -15,7 +15,7 @@
 
 #include "shared.h"
 
-//#define HAS_VARIABLE
+#define HAS_VARIABLE
 #ifdef HAS_VARIABLE
 
 //#include <cub/cub.cuh>
@@ -424,7 +424,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
             syclZFP::copy_length_launch(q, d_bitlengths, d_offsets, i, cur_blocks);
 
             // Prefix sum to turn length into offsets
-            cub::DeviceScan::InclusiveSum(d_cubtemp, lcubtemp, d_offsets, d_offsets, cur_blocks + 1);
+            //     cub::DeviceScan::InclusiveSum(d_cubtemp, lcubtemp, d_offsets, d_offsets, cur_blocks + 1);
 
             // Compact the stream array in-place
             syclZFP::chunk_process_launch(q, (uint *) d_stream, d_offsets, i, cur_blocks, last_chunk, buffer_maxbits, num_sm);

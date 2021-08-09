@@ -1,10 +1,10 @@
 #pragma once
 
-#include "syclZFP.h"
 #include <sycl/sycl.hpp>
+#include <climits>
+#include "syclZFP.h"
 #include "type_info.hpp"
 #include "constants.h"
-#include <climits>
 
 typedef uint64_t Word;
 typedef int64_t ll;
