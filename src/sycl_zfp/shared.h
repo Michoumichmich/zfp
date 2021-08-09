@@ -107,8 +107,8 @@ namespace syclZFP {
 
     sycl::id<3> get_max_grid_dims(const sycl::queue& q)
     {
-#ifdef SYCL_EXT_ONEAPI_MAX_NUMBER_WORK_GROUPS
-        return q.get_device().get_info<sycl::info::device::ext_oneapi_max_number_work_groups>();
+#ifdef SYCL_EXT_ONEAPI_MAX_WORK_GROUP_QUERY
+        return q.get_device().get_info<sycl::info::device::ext_oneapi_max_work_groups_3d>();
 #else
 #pragma message "Missing SYCL information descriptor to check the max number of work groups allowed"
         return {(1 << 30) - 1, (1 << 30) - 1, (1 << 30) - 1};
@@ -163,8 +163,8 @@ namespace syclZFP {
             if (rem % (base * base) != 0) z_rows++;
             grid_size[0] += z_rows;
         }
-#ifdef SYCL_EXT_ONEAPI_MAX_GLOBAL_NUMBER_WORK_GROUPS
-        assert(grid_size[0] * grid_size[1] * grid_size[2] < q.get_device().get_info<sycl::info::device::ext_oneapi_max_global_number_work_groups>());
+#ifdef SYCL_EXT_ONEAPI_MAX_WORK_GROUP_QUERY
+        assert(grid_size[0] * grid_size[1] * grid_size[2] < q.get_device().get_info<sycl::info::device::ext_oneapi_max_global_work_groups>());
 #else
 #pragma message "Missing SYCL information descriptor to check the max number of work groups allowed"
 #endif
