@@ -17,7 +17,7 @@
 #ifdef HAS_VARIABLE
 
 #include "variable.hpp"
-
+#include "sycl_intrinsics/scan.hpp"
 #endif
 
 #include "pointers.hpp"
@@ -307,7 +307,7 @@ namespace internal {
         *d_offsets = (size_t *) sycl::malloc_device(size, q);
         // Using CUB for the prefix sum. CUB needs a bit of temp memory too
         size_t tempsize = 0;
-        //cub::DeviceScan::InclusiveSum(nullptr, tempsize, *d_offsets, *d_offsets, *chunk_size + 1);
+       // cub::DeviceScan::InclusiveSum(nullptr, tempsize, *d_offsets, *d_offsets, *chunk_size + 1);
         *lcubtemp = tempsize;
         *d_cubtemp = (void *) sycl::malloc_device(tempsize, q);
     }
@@ -420,7 +420,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
             syclZFP::copy_length_launch(q, d_bitlengths, d_offsets, i, cur_blocks);
 
             // Prefix sum to turn length into offsets
-       //     cub::DeviceScan::InclusiveSum(d_cubtemp, lcubtemp, d_offsets, d_offsets, cur_blocks + 1);
+      //      cub::DeviceScan::InclusiveSum(d_cubtemp, lcubtemp, d_offsets, d_offsets, cur_blocks + 1);
 
             // Compact the stream array in-place
             syclZFP::chunk_process_launch(q, (uint *) d_stream, d_offsets, i, cur_blocks, last_chunk, buffer_maxbits, num_sm);

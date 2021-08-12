@@ -62,7 +62,7 @@ namespace syclZFP {
         block[0] = (block_idx / (block_dims[2] * block_dims[1])) * 4;
 
         // default strides
-        const ll offset = (ll) block[2] * stride.x + (ll) block[1] * stride.y + (ll) block[0] * stride.z;
+        const int64_t offset = (int64_t) block[2] * stride.x + (int64_t) block[1] * stride.y + (int64_t) block[0] * stride.z;
 
         bool partial = false;
         if (block[2] + 4 > dims[2]) partial = true;

@@ -61,7 +61,7 @@ namespace syclZFP {
         block[1] = (block_idx % block_dims[1]) * 4; //X
         block[0] = ((block_idx / block_dims[0]) % block_dims[0]) * 4; //Y
 
-        const ll offset = (ll) block[1] * stride.x + (ll) block[0] * stride.y;
+        const int64_t offset = (int64_t) block[1] * stride.x + (int64_t) block[0] * stride.y;
 
         Scalar fblock[ZFP_2D_BLOCK_SIZE];
 

@@ -239,7 +239,7 @@ namespace syclZFP {
 
             inv_transform<BlockSize> trans;
             trans.inv_xform(iblock);
-            Scalar inv_w = dequantize<Int, Scalar>(1, emax);
+            Scalar inv_w = dequantize<Int, Scalar>(Int(1), emax);
 #pragma unroll BlockSize
             for (int i = 0; i < BlockSize; ++i) {
                 fblock[i] = inv_w * (Scalar) iblock[i];

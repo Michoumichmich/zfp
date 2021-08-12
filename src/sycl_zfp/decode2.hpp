@@ -55,7 +55,7 @@ namespace syclZFP {
         block[1] = (block_idx % block_dims[1]) * 4;
         block[0] = ((block_idx / block_dims[1]) % block_dims[0]) * 4;
 
-        const ll offset = (ll) block[1] * stride.x + (ll) block[0] * stride.y;
+        const int64_t offset = (int64_t) block[1] * stride.x + (int64_t) block[0] * stride.y;
 
         bool partial = false;
         if (block[1] + 4 > dims[1]) partial = true;

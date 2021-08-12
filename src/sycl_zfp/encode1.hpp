@@ -51,7 +51,7 @@ namespace syclZFP {
         // logical pos in 3d array
         size_t block = (block_idx % block_dim) * 4;
 
-        const ll offset = (ll) block * sx;
+        const int64_t offset = (int64_t) block * sx;
 
         Scalar fblock[ZFP_1D_BLOCK_SIZE];
 

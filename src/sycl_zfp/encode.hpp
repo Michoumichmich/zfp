@@ -202,7 +202,7 @@ namespace syclZFP {
     template<typename Int, typename UInt, int BlockSize>
     void fwd_order(const_perm_accessor acc, UInt *ublock, const Int *iblock) {
         for (uint i = 0; i < BlockSize; ++i) {
-            ublock[i] = int2uint(iblock[(uchar) acc[i]]);
+            ublock[i] = int2uint(iblock[(uint) acc[i]]);
         }
     }
 
@@ -256,17 +256,16 @@ namespace syclZFP {
             Word add = b << shift;
             ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref(m_stream[write_index]);
             ref += add;
-            //   m_stream[write_index] += add;
 
             // n_bits straddles the word boundary
             bool straddle = seg_start < (int) sizeof(Word) * 8 && seg_end >= (int) sizeof(Word) * 8;
 
-            //if (straddle) {
-            Word rem = b >> (sizeof(Word) * 8 - (uint) shift);
-            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref_next(m_stream[write_index + 1]);
-            ref_next += straddle * rem;
-            //        m_stream[write_index + 1] += rem;
-            // }
+            if (straddle) {
+                Word rem = b >> (sizeof(Word) * 8 - (uint) shift);
+                ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref_next(
+                        m_stream[write_index + 1]);
+                ref_next += straddle * rem;
+            }
             m_current_bit += n_bits;
             return bits >> (Word) n_bits;
         }
@@ -285,7 +284,6 @@ namespace syclZFP {
             Word add = (Word) bit << shift;
             ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref(m_stream[write_index]);
             ref += add;
-            //m_stream[write_index] += add;
             m_current_bit += 1;
 
             return bit;

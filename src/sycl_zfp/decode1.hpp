@@ -50,7 +50,7 @@ namespace syclZFP {
         zfp_decode(acc, reader, result, maxbits);
 
         size_t block = block_idx * 4ull;
-        const ll offset = (ll) block * stride;
+        const int64_t offset = (int64_t) block * stride;
 
         bool partial = false;
         if (block + 4 > dim) partial = true;

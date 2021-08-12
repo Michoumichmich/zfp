@@ -1,19 +1,8 @@
 #pragma once
 
+#include "sycl_intrinsics/intrinsics.hpp"
+#include "sycl_intrinsics/cooperative_groups.hpp"
 #include "shared.h"
-
-
-namespace sycl::ext {
-    inline uint32_t funnelshift_l(uint32_t lo, uint32_t hi, uint32_t shift) {
-        if (shift == 0) return hi; // To avoid shifting by 32
-        return (hi << shift % 31) | (lo >> (32 - (shift % 31)));
-    }
-
-    inline uint32_t funnelshift_r(uint32_t lo, uint32_t hi, uint32_t shift) {
-        if (shift == 0) return lo; // To avoid shifting by 32
-        return (lo >> shift % 31) | (hi << (32 - (shift % 31)));
-    }
-}
 
 namespace syclZFP {
 
@@ -26,7 +15,6 @@ namespace syclZFP {
             return;
         offsets[index + 1] = length[first_stream + index];
     }
-
 
     class copy_length_launch_kernel;
 
@@ -166,6 +154,7 @@ namespace syclZFP {
 //  *num_tiles)
 
     void concat_bitstreams_chunk(sycl::nd_item<2> item,
+                                 nd_range_barrier<2> *grid_barrier,
                                  uint *__restrict__ streams,
                                  size_t *__restrict__ offsets,
                                  size_t first_stream_chunk,
@@ -217,8 +206,7 @@ namespace syclZFP {
             size_t writing_to = (offsets[last_stream] + 31) / 32;
             size_t reading_from = (first_stream_chunk + i) * maxbits;
             if (writing_to >= reading_from)
-                //grid.sync();
-                void(1);
+                grid_barrier->wait(item);
             else
                 item.barrier(sycl::access::fence_space::local_space);
 
@@ -233,15 +221,19 @@ namespace syclZFP {
     }
 
 
-    void cudaOccupancyMaxActiveBlocksPerMultiprocessor(uint *pInt, void (*param)(sycl::nd_item<2>, uint *, size_t *, size_t, size_t, bool, size_t, size_t, uint *, uint *), size_t i, size_t count);
+    void cudaOccupancyMaxActiveBlocksPerMultiprocessor(uint *pInt, void (*param)(sycl::nd_item<2>, nd_range_barrier<2> *, uint *, size_t *, size_t, size_t, bool, size_t, size_t, uint *, uint *), size_t i, size_t count) {
+        *pInt = 2;
+    }
 
-    void chunk_process_launch(sycl::queue &q, uint *streams,
-                              size_t *chunk_offsets,
-                              size_t first,
-                              uint nstream_chunk,
-                              bool last_chunk,
-                              uint nbitsmax,
-                              uint num_sm) {
+    void chunk_process_launch(
+            sycl::queue &q,
+            uint *streams,
+            size_t *chunk_offsets,
+            size_t first,
+            uint nstream_chunk,
+            bool last_chunk,
+            uint nbitsmax,
+            uint num_sm) {
         uint maxpad32 = (nbitsmax + 31) / 32;
 
         // Increase the number of threads per ZFP block ("tile") as nbitsmax increases
@@ -253,8 +245,10 @@ namespace syclZFP {
         // Block sizes set so that the shared memory stays < 48KB.
         uint max_blocks = 0;
         if (nbitsmax <= 352) {
-            constexpr size_t tile_size = 1;
-            constexpr size_t num_tiles = 512;
+            constexpr
+            size_t tile_size = 1;
+            constexpr
+            size_t num_tiles = 512;
             size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
             cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
             max_blocks *= num_sm;
@@ -262,6 +256,8 @@ namespace syclZFP {
             sycl::range<2> threads(num_tiles, tile_size);
             sycl::range<2> grid_dim(1, max_blocks);
             sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
+
+            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
 
             q.submit([&](sycl::handler &cgh) {
                 sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
@@ -269,14 +265,16 @@ namespace syclZFP {
                 cgh.parallel_for<class kernel_352>(kernel_parameters, [=](sycl::nd_item<2> it) {
                     auto sm_in_ptr = sm_in.get_pointer();
                     auto sm_length_ptr = sm_length.get_pointer();
-                    concat_bitstreams_chunk<tile_size, num_tiles>(it, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
+                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
                 });
             }).wait();
 
 
         } else if (nbitsmax <= 1504) {
-            constexpr size_t tile_size = 4;
-            constexpr size_t num_tiles = 128;
+            constexpr
+            size_t tile_size = 4;
+            constexpr
+            size_t num_tiles = 128;
             size_t shmem_count = 2 * num_tiles * maxpad32 + 2;
             cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
             max_blocks *= num_sm;
@@ -284,20 +282,22 @@ namespace syclZFP {
             sycl::range<2> threads(num_tiles, tile_size);
             sycl::range<2> grid_dim(1, max_blocks);
             sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
-
+            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
             q.submit([&](sycl::handler &cgh) {
                 sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
                 sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_length(num_tiles, cgh);
                 cgh.parallel_for<class kernel_1504>(kernel_parameters, [=](sycl::nd_item<2> it) {
                     auto sm_in_ptr = sm_in.get_pointer();
                     auto sm_length_ptr = sm_length.get_pointer();
-                    concat_bitstreams_chunk<tile_size, num_tiles>(it, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
+                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
                 });
             }).wait();
 
         } else if (nbitsmax <= 6112) {
-            constexpr size_t tile_size = 16;
-            constexpr size_t num_tiles = 32;
+            constexpr
+            size_t tile_size = 16;
+            constexpr
+            size_t num_tiles = 32;
             size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
             cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
             max_blocks *= num_sm;
@@ -305,22 +305,24 @@ namespace syclZFP {
             sycl::range<2> threads(num_tiles, tile_size);
             sycl::range<2> grid_dim(1, max_blocks);
             sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
-
+            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
             q.submit([&](sycl::handler &cgh) {
                 sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
                 sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_length(num_tiles, cgh);
                 cgh.parallel_for<class kernel_6112>(kernel_parameters, [=](sycl::nd_item<2> it) {
                     auto sm_in_ptr = sm_in.get_pointer();
                     auto sm_length_ptr = sm_length.get_pointer();
-                    concat_bitstreams_chunk<tile_size, num_tiles>(it, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
+                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
                 });
             }).wait();
 
 
         } else // Up to 24512 bits, so works even for largest 4D.
         {
-            constexpr size_t tile_size = 64;
-            constexpr size_t num_tiles = 8;
+            constexpr
+            size_t tile_size = 64;
+            constexpr
+            size_t num_tiles = 8;
             size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
             cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
             max_blocks *= num_sm;
@@ -328,6 +330,7 @@ namespace syclZFP {
             sycl::range<2> grid_dim(1, max_blocks);
             sycl::range<2> threads(num_tiles, tile_size);
             sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
+            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
 
             q.submit([&](sycl::handler &cgh) {
                 sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
@@ -335,7 +338,7 @@ namespace syclZFP {
                 cgh.parallel_for<class kernel_24512>(kernel_parameters, [=](sycl::nd_item<2> it) {
                     auto sm_in_ptr = sm_in.get_pointer();
                     auto sm_length_ptr = sm_length.get_pointer();
-                    concat_bitstreams_chunk<tile_size, num_tiles>(it, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
+                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
                 });
             }).wait();
 
@@ -343,9 +346,6 @@ namespace syclZFP {
         }
     }
 
-    void cudaOccupancyMaxActiveBlocksPerMultiprocessor(uint *pInt, void (*param)(sycl::nd_item<2>, uint *, size_t *, size_t, size_t, bool, size_t, size_t, uint *, uint *), size_t i, size_t count) {
-        *pInt = 1;
-    }
 
 
 
