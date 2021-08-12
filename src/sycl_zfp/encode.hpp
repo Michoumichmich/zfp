@@ -258,13 +258,13 @@ namespace syclZFP {
             ref += add;
 
             // n_bits straddles the word boundary
-            bool straddle = seg_start < (int) sizeof(Word) * 8 && seg_end >= (int) sizeof(Word) * 8;
+            bool straddle = seg_start < sizeof(Word) * 8 && seg_end >= sizeof(Word) * 8;
 
             if (straddle) {
                 Word rem = b >> (sizeof(Word) * 8 - (uint) shift);
                 ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref_next(
                         m_stream[write_index + 1]);
-                ref_next += straddle * rem;
+                ref_next += rem;
             }
             m_current_bit += n_bits;
             return bits >> (Word) n_bits;
