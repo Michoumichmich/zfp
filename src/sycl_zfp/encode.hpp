@@ -254,7 +254,7 @@ namespace syclZFP {
 
             Word b = bits - left;
             Word add = b << shift;
-            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref(m_stream[write_index]);
+            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::local_space> ref(m_stream[write_index]);
             ref += add;
 
             // n_bits straddles the word boundary
@@ -262,7 +262,7 @@ namespace syclZFP {
 
             if (straddle) {
                 Word rem = b >> (sizeof(Word) * 8 - (uint) shift);
-                ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref_next(
+                ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::local_space> ref_next(
                         m_stream[write_index + 1]);
                 ref_next += rem;
             }
@@ -282,7 +282,7 @@ namespace syclZFP {
             // uint zero_shift = sizeof(Word) * 8 - n_bits;
 
             Word add = (Word) bit << shift;
-            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref(m_stream[write_index]);
+            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::local_space> ref(m_stream[write_index]);
             ref += add;
             m_current_bit += 1;
 

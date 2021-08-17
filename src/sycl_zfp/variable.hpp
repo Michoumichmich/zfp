@@ -133,7 +133,7 @@ namespace syclZFP {
                 output[offset0 + i] = value;
             else {
                 uint assumed, old = output[offset0 + i];
-                ATOMIC_REF_NAMESPACE::atomic_ref<uint, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::global_space> ref(output[offset0 + i]);
+                ATOMIC_REF_NAMESPACE::atomic_ref<uint, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::local_space> ref(output[offset0 + i]);
                 do {
                     assumed = old;
                     old = ref.compare_exchange_strong(assumed, (assumed & ~mask) + (value & mask));
