@@ -1,15 +1,16 @@
 #pragma once
 
-#include "sycl_intrinsics/intrinsics.hpp"
-#include "sycl_intrinsics/cooperative_groups.hpp"
+#include <intrinsics.hpp>
+#include <cooperative_groups.hpp>
+#include <parallel_primitives/scan_cooperative.hpp>
 #include "shared.h"
 
 namespace syclZFP {
 
-    // *******************************************************************************
-
-    // Copy a chunk of 16-bit stream lengths into the 64-bit offsets array
-    // to compute prefix sums. The first value in offsets is the "base" of the prefix sum
+    /**
+     * Copy a chunk of 16-bit stream lengths into the 64-bit offsets array
+     * to compute prefix sums. The first value in offsets is the "base" of the prefix sum
+     */
     void copy_length(size_t index, const ushort *length, size_t *offsets, size_t first_stream, int nstreams_chunk) {
         if (index >= nstreams_chunk)
             return;
@@ -33,12 +34,13 @@ namespace syclZFP {
     // Input alignment can be anything (1-bit) as maxbits is not always a multiple of 8,
     // so the data is aligned on the fly (first bit of the bitstream on bit 0 in shared memory)
     template<uint tile_size>
-    inline void load_to_shared(sycl::nd_item<2> item,
-                               const uint *streams,                   // Input data
-                               uint *sm,                              // Shared memory
-                               const size_t &offset_bits, // Offset in bits for the stream
-                               const size_t &length_bits,               // Length in bits for this stream
-                               const size_t &maxpad32)                   // Next multiple of 32 of maxbits
+    inline void load_to_shared(
+            sycl::nd_item<2> item,
+            const uint *streams,                     // Input data
+            uint *sm,                                // Shared memory
+            const size_t &offset_bits,               // Offset in bits for the stream
+            const size_t &length_bits,               // Length in bits for this stream
+            const size_t &maxpad32)                  // Next multiple of 32 of maxbits
     {
         uint misaligned = offset_bits & 31;
         unsigned long long offset_32 = offset_bits / 32;
@@ -57,18 +59,19 @@ namespace syclZFP {
     // then write all the data (coalesced) to global memory, using atomics only
     // for the first and last elements
     template<int tile_size, int num_tiles>
-    inline void process(sycl::nd_item<2> item,
-                        bool valid_stream,
-                        size_t &offset0,     // Offset in bits of the first bitstream of the block
-                        const size_t offset, // Offset in bits for this stream
-                        const size_t &length_bits,          // length of this stream
-                        const size_t &add_padding,          // padding at the end of the block, in bits
-                        const size_t &tid,                  // global thread index inside the thread block
-                        const uint *sm_in,                  // shared memory containing the compressed input data
-                        uint *sm_out,                       // shared memory to stage the compacted compressed data
-                        size_t maxpad32,                    // Leading dimension of the shared memory (padded maxbits)
-                        uint *sm_length,                    // shared memory to compute a prefix-sum inside the block
-                        uint *output)                       // output pointer
+    inline void process(
+            sycl::nd_item<2> item,
+            bool valid_stream,
+            size_t &offset0,     // Offset in bits of the first bitstream of the block
+            const size_t offset, // Offset in bits for this stream
+            const size_t &length_bits,          // length of this stream
+            const size_t &add_padding,          // padding at the end of the block, in bits
+            const size_t &tid,                  // global thread index inside the thread block
+            const uint *sm_in,                  // shared memory containing the compressed input data
+            uint *sm_out,                       // shared memory to stage the compacted compressed data
+            size_t maxpad32,                    // Leading dimension of the shared memory (padded maxbits)
+            uint *sm_length,                    // shared memory to compute a prefix-sum inside the block
+            uint *output)                       // output pointer
     {
         // All streams in the block will align themselves on the first stream of the block
         size_t misaligned0 = offset0 & 31;
@@ -146,26 +149,27 @@ namespace syclZFP {
 // threadIdx.y = Index of the stream
 // threadIdx.x = Threads working on the same stream
 // Must launch dim3(tile_size, num_tiles, 1) threads per block.
-// Offsets has a length of (nstreams_chunk + 1), offsets[0] is the offset in bits
+// Offset has a length of (nstreams_chunk + 1), offsets[0] is the offset in bits
 // where stream 0 starts, it must be memset to zero before launching the very first chunk,
 // and is updated at the end of this kernel.
     template<int tile_size, int num_tiles>
 //   __launch_bounds__(tile_size
 //  *num_tiles)
 
-    void concat_bitstreams_chunk(sycl::nd_item<2> item,
-                                 nd_range_barrier<2> *grid_barrier,
-                                 uint *__restrict__ streams,
-                                 size_t *__restrict__ offsets,
-                                 size_t first_stream_chunk,
-                                 size_t nstreams_chunk,
-                                 bool last_chunk,
-                                 size_t maxbits,
-                                 size_t maxpad32, uint *sm_in, uint *sm_length) {
-        //   cg::grid_group grid = cg::this_grid();
-        //  uint sm_length[num_tiles];   // shared
-        //  extern uint sm_in[];        //shared         // sm_in[num_tiles * maxpad32]
-        uint *sm_out = sm_in + num_tiles * maxpad32; // sm_out[num_tiles * maxpad32 + 2]
+    void concat_bitstreams_chunk(
+            sycl::nd_item<2> item,
+            nd_range_barrier<2> *grid_barrier,
+            uint *__restrict__ streams,
+            size_t *__restrict__ offsets,
+            size_t first_stream_chunk,
+            size_t nstreams_chunk,
+            bool last_chunk,
+            size_t maxbits,
+            size_t maxpad32,
+            uint *sm_in,
+            uint *sm_length) {
+
+        uint *sm_out = sm_in + num_tiles * maxpad32;
         size_t tid = item.get_local_id(0) * tile_size + item.get_local_id(1);
         size_t grid_stride = item.get_group_range(1) * num_tiles;
         size_t first_bitstream_block = item.get_group(1) * num_tiles;
@@ -222,8 +226,11 @@ namespace syclZFP {
 
 
     void cudaOccupancyMaxActiveBlocksPerMultiprocessor(uint *pInt, void (*param)(sycl::nd_item<2>, nd_range_barrier<2> *, uint *, size_t *, size_t, size_t, bool, size_t, size_t, uint *, uint *), size_t i, size_t count) {
-        *pInt = 2;
+        *pInt = 2; //TODO
     }
+
+    template<int tile_size, int num_tiles>
+    struct chunk_process_launch_kernel;
 
     void chunk_process_launch(
             sycl::queue &q,
@@ -237,120 +244,54 @@ namespace syclZFP {
         uint maxpad32 = (nbitsmax + 31) / 32;
 
         // Increase the number of threads per ZFP block ("tile") as nbitsmax increases
-        // Compromise between coalescing, inactive threads and shared memory size <= 48KB
+        // Compromise between coalescing, inactive threads and shared memory size <= 48 KiB
         // Total shared memory used = (2 * num_tiles * maxpad + 2) x 32-bit dynamic shared memory
         // and num_tiles x 32-bit static shared memory.
         // The extra 2 elements of dynamic shared memory are needed to handle unaligned output data
         // and potential zero-padding to the next multiple of 64 bits.
-        // Block sizes set so that the shared memory stays < 48KB.
-        uint max_blocks = 0;
+        // Block sizes set so that the shared memory stays < 48 KiB.
+        auto kernel = [=]<size_t tile_size, size_t num_tiles>() mutable {
+
+            using kernel_name = chunk_process_launch_kernel<tile_size, num_tiles>;
+
+            uint max_blocks = 0;
+            size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
+            cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
+            max_blocks *= num_sm;
+            max_blocks = std::min(nstream_chunk, max_blocks);
+            sycl::range<2> threads(num_tiles, tile_size);
+            sycl::range<2> grid_dim(1, max_blocks);
+            sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
+
+            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
+
+            q.submit([&](sycl::handler &cgh) {
+                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
+                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_length(num_tiles, cgh);
+                cgh.parallel_for<kernel_name>(kernel_parameters, [=](sycl::nd_item<2> it) {
+                    auto sm_in_ptr = sm_in.get_pointer();
+                    auto sm_length_ptr = sm_length.get_pointer();
+                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
+                });
+            }).wait();
+        };
+
         if (nbitsmax <= 352) {
-            constexpr
-            size_t tile_size = 1;
-            constexpr
-            size_t num_tiles = 512;
-            size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
-            cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
-            max_blocks *= num_sm;
-            max_blocks = std::min(nstream_chunk, max_blocks);
-            sycl::range<2> threads(num_tiles, tile_size);
-            sycl::range<2> grid_dim(1, max_blocks);
-            sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
-
-            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
-
-            q.submit([&](sycl::handler &cgh) {
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_length(num_tiles, cgh);
-                cgh.parallel_for<class kernel_352>(kernel_parameters, [=](sycl::nd_item<2> it) {
-                    auto sm_in_ptr = sm_in.get_pointer();
-                    auto sm_length_ptr = sm_length.get_pointer();
-                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
-                });
-            }).wait();
-
-
+            constexpr size_t tile_size = 1;
+            constexpr size_t num_tiles = 512;
+            kernel.operator()<tile_size, num_tiles>();
         } else if (nbitsmax <= 1504) {
-            constexpr
-            size_t tile_size = 4;
-            constexpr
-            size_t num_tiles = 128;
-            size_t shmem_count = 2 * num_tiles * maxpad32 + 2;
-            cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
-            max_blocks *= num_sm;
-            max_blocks = std::min(nstream_chunk, max_blocks);
-            sycl::range<2> threads(num_tiles, tile_size);
-            sycl::range<2> grid_dim(1, max_blocks);
-            sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
-            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
-            q.submit([&](sycl::handler &cgh) {
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_length(num_tiles, cgh);
-                cgh.parallel_for<class kernel_1504>(kernel_parameters, [=](sycl::nd_item<2> it) {
-                    auto sm_in_ptr = sm_in.get_pointer();
-                    auto sm_length_ptr = sm_length.get_pointer();
-                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
-                });
-            }).wait();
-
+            constexpr size_t tile_size = 4;
+            constexpr size_t num_tiles = 128;
+            kernel.operator()<tile_size, num_tiles>();
         } else if (nbitsmax <= 6112) {
-            constexpr
-            size_t tile_size = 16;
-            constexpr
-            size_t num_tiles = 32;
-            size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
-            cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
-            max_blocks *= num_sm;
-            max_blocks = std::min(nstream_chunk, max_blocks);
-            sycl::range<2> threads(num_tiles, tile_size);
-            sycl::range<2> grid_dim(1, max_blocks);
-            sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
-            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
-            q.submit([&](sycl::handler &cgh) {
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_length(num_tiles, cgh);
-                cgh.parallel_for<class kernel_6112>(kernel_parameters, [=](sycl::nd_item<2> it) {
-                    auto sm_in_ptr = sm_in.get_pointer();
-                    auto sm_length_ptr = sm_length.get_pointer();
-                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
-                });
-            }).wait();
-
-
-        } else // Up to 24512 bits, so works even for largest 4D.
-        {
-            constexpr
-            size_t tile_size = 64;
-            constexpr
-            size_t num_tiles = 8;
-            size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
-            cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
-            max_blocks *= num_sm;
-            max_blocks = std::min(nstream_chunk, max_blocks);
-            sycl::range<2> grid_dim(1, max_blocks);
-            sycl::range<2> threads(num_tiles, tile_size);
-            sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
-            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
-
-            q.submit([&](sycl::handler &cgh) {
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_length(num_tiles, cgh);
-                cgh.parallel_for<class kernel_24512>(kernel_parameters, [=](sycl::nd_item<2> it) {
-                    auto sm_in_ptr = sm_in.get_pointer();
-                    auto sm_length_ptr = sm_length.get_pointer();
-                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
-                });
-            }).wait();
-
-
+            constexpr size_t tile_size = 16;
+            constexpr size_t num_tiles = 32;
+            kernel.operator()<tile_size, num_tiles>();
+        } else {
+            constexpr size_t tile_size = 64;
+            constexpr size_t num_tiles = 8;
+            kernel.operator()<tile_size, num_tiles>();
         }
     }
-
-
-
-
-
-// *******************************************************************************
-
 }
-

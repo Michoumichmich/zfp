@@ -17,7 +17,7 @@
 #ifdef HAS_VARIABLE
 
 #include "variable.hpp"
-#include "sycl_intrinsics/scan.hpp"
+
 #endif
 
 #include "pointers.hpp"
@@ -107,9 +107,9 @@ namespace internal {
         return false;
     }
 
-//
-// encode expects device pointers
-//
+    //
+    // encode expects device pointers
+    //
     template<typename T, bool variable_rate>
     size_t encode(sycl::queue &q,
                   sycl::id<3> dims,
@@ -296,22 +296,6 @@ namespace internal {
         sycl::free(d_bitlengths, q);
     }
 
-    static void setup_device_chunking(sycl::queue &q, int *chunk_size, size_t **d_offsets, size_t *lcubtemp, void **d_cubtemp, int num_sm, int variable_rate) {
-        if (!variable_rate)
-            return;
-        // TODO : Error handling for CUDA malloc and CUB?
-        // Assuming 1 thread = 1 ZFP block,
-        // launching 1024 threads per SM should give a decent occupancy
-        *chunk_size = num_sm * 1024;
-        size_t size = ((size_t) *chunk_size + 1) * sizeof(size_t);
-        *d_offsets = (size_t *) sycl::malloc_device(size, q);
-        // Using CUB for the prefix sum. CUB needs a bit of temp memory too
-        size_t tempsize = 0;
-       // cub::DeviceScan::InclusiveSum(nullptr, tempsize, *d_offsets, *d_offsets, *chunk_size + 1);
-        *lcubtemp = tempsize;
-        *d_cubtemp = (void *) sycl::malloc_device(tempsize, q);
-    }
-
     static void cleanup_device_ptr(sycl::queue &q, void *orig_ptr, void *d_ptr, size_t bytes, int64_t offset, zfp_type type) {
         bool device = syclZFP::queue_can_access_ptr(q, orig_ptr);
         if (device) {
@@ -327,9 +311,13 @@ namespace internal {
     }
 
 } // namespace internal
+
+
 size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_rate) {
+#ifndef HAS_VARIABLE
     if (variable_rate)
-        return 0; // Variable rate requires CUDA >= 9
+        return 0;
+#endif
 
 
     if (zfp_stream_compression_mode(stream) == zfp_mode_reversible) {
@@ -363,12 +351,6 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
 
     Word *d_stream = internal::setup_device_stream_compress(q, stream, field);
     ushort *d_bitlengths = internal::setup_device_nbits_compress(q, stream, field, variable_rate);
-
-    int chunk_size;
-    size_t *d_offsets;
-    size_t lcubtemp;
-    void *d_cubtemp;
-    internal::setup_device_chunking(q, &chunk_size, &d_offsets, &lcubtemp, &d_cubtemp, num_sm, variable_rate);
 
     uint buffer_maxbits = MIN (stream->maxbits, zfp_block_maxbits(stream, field));
 
@@ -408,8 +390,14 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
 
 #ifdef HAS_VARIABLE
     if (variable_rate) {
+        int chunk_size = num_sm * 1024;
+        auto d_offsets = sycl::malloc_device<uint64_t>(chunk_size + 1, q);
+        auto offsets_out = sycl::malloc_device<uint64_t>(chunk_size + 1, q);
+
         size_t blocks = zfp_field_num_blocks(field);
+
         for (size_t i = 0; i < blocks; i += chunk_size) {
+            using namespace parallel_primitives;
             int cur_blocks = chunk_size;
             bool last_chunk = false;
             if (i + chunk_size > blocks) {
@@ -420,14 +408,19 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
             syclZFP::copy_length_launch(q, d_bitlengths, d_offsets, i, cur_blocks);
 
             // Prefix sum to turn length into offsets
-      //      cub::DeviceScan::InclusiveSum(d_cubtemp, lcubtemp, d_offsets, d_offsets, cur_blocks + 1);
+            cooperative_scan<scan_type::inclusive, sycl::plus<>>(q, offsets_out, d_offsets, cur_blocks + 1);
+            //  cub::DeviceScan::InclusiveSum(d_cubtemp, lcubtemp, d_offsets, d_offsets, cur_blocks + 1);
 
             // Compact the stream array in-place
-            syclZFP::chunk_process_launch(q, (uint *) d_stream, d_offsets, i, cur_blocks, last_chunk, buffer_maxbits, num_sm);
+            syclZFP::chunk_process_launch(q, (uint *) d_stream, offsets_out, i, cur_blocks, last_chunk, buffer_maxbits, num_sm);
         }
         // The total length in bits is now in the base of the prefix sum.
-        q.memcpy(&stream_bytes, d_offsets, sizeof(size_t)).wait();
+        q.memcpy(&stream_bytes, offsets_out, sizeof(size_t)).wait();
         stream_bytes = (stream_bytes + 7) / 8;
+
+
+        sycl::free(offsets_out, q);
+        sycl::free(d_offsets, q);
     }
 #endif
 
@@ -439,8 +432,8 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
             size_t size = zfp_field_num_blocks(field) * sizeof(ushort);
             internal::cleanup_device_ptr(q, stream->stream->bitlengths, d_bitlengths, size, 0, zfp_type_none);
         }
-        internal::cleanup_device_ptr(q, nullptr, d_offsets, 0, 0, zfp_type_none);
-        internal::cleanup_device_ptr(q, nullptr, d_cubtemp, 0, 0, zfp_type_none);
+        //internal::cleanup_device_ptr(q, nullptr, d_offsets, 0, 0, zfp_type_none);
+        //internal::cleanup_device_ptr(q, nullptr, d_cubtemp, 0, 0, zfp_type_none);
     }
 
     // zfp wants to flush the stream.
@@ -508,7 +501,7 @@ void sycl_decompress(zfp_stream *stream, zfp_field *field) {
     internal::cleanup_device_ptr(q, stream->stream->begin, d_stream, 0, 0, field->type);
     internal::cleanup_device_ptr(q, field->data, d_data, bytes, offset, field->type);
 
-    // this is how zfp determins if this was a success
+    // this is how zfp determines if this was a success
     size_t words_read = decoded_bytes / sizeof(Word);
     stream->stream->bits = wsize;
     // set stream pointer to end of stream
