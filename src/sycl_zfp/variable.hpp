@@ -25,7 +25,7 @@ namespace syclZFP {
         auto kernel_range = sycl::nd_range<1>(sycl::range<1>(work_group_count * work_group_size), sycl::range<1>(work_group_size));
         q.parallel_for<copy_length_launch_kernel>(kernel_range, [=](sycl::nd_item<1> item) {
             copy_length(item.get_global_linear_id(), bitlengths, chunk_offsets, first, nstreams_chunk);
-        });
+        }).wait();
     }
 
     // *******************************************************************************
@@ -143,19 +143,18 @@ namespace syclZFP {
     }
 
 
-// In-place bitstream concatenation: compacting blocks containing different number
-// of bits, with the input blocks stored in bins of the same size
-// Using a 2D tile of threads,
-// threadIdx.y = Index of the stream
-// threadIdx.x = Threads working on the same stream
-// Must launch dim3(tile_size, num_tiles, 1) threads per block.
-// Offset has a length of (nstreams_chunk + 1), offsets[0] is the offset in bits
-// where stream 0 starts, it must be memset to zero before launching the very first chunk,
-// and is updated at the end of this kernel.
-    template<int tile_size, int num_tiles>
-//   __launch_bounds__(tile_size
-//  *num_tiles)
+    // In-place bitstream concatenation: compacting blocks containing different number
+    // of bits, with the input blocks stored in bins of the same size
+    // Using a 2D tile of threads,
+    // threadIdx.y = Index of the stream
+    // threadIdx.x = Threads working on the same stream
+    // Must launch dim3(tile_size, num_tiles, 1) threads per block.
+    // Offset has a length of (nstreams_chunk + 1), offsets[0] is the offset in bits
+    // where stream 0 starts, it must be memset to zero before launching the very first chunk,
+    // and is updated at the end of this kernel.
 
+    //   __launch_bounds__(tile_size *num_tiles)
+    template<int tile_size, int num_tiles>
     void concat_bitstreams_chunk(
             sycl::nd_item<2> item,
             nd_range_barrier<2> *grid_barrier,
@@ -232,6 +231,41 @@ namespace syclZFP {
     template<int tile_size, int num_tiles>
     struct chunk_process_launch_kernel;
 
+    template<int tile_size, int num_tiles>
+    void dispatch_chunk_kernel(
+            sycl::queue &q,
+            uint *streams,
+            size_t *chunk_offsets,
+            size_t first,
+            uint nstream_chunk,
+            bool last_chunk,
+            uint nbitsmax,
+            uint num_sm) {
+        using kernel_name = chunk_process_launch_kernel<tile_size, num_tiles>;
+        uint maxpad32 = (nbitsmax + 31) / 32;
+        uint max_blocks = 0;
+        size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
+        cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
+        max_blocks *= num_sm;
+        max_blocks = std::min(nstream_chunk, max_blocks);
+        sycl::range<2> threads(num_tiles, tile_size);
+        sycl::range<2> grid_dim(1, max_blocks);
+        sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
+
+        auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
+
+        q.submit([&](sycl::handler &cgh) {
+            sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
+            sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_length(num_tiles, cgh);
+            cgh.parallel_for<kernel_name>(kernel_parameters, [=](sycl::nd_item<2> it) {
+                auto sm_in_ptr = sm_in.get_pointer();
+                auto sm_length_ptr = sm_length.get_pointer();
+                concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
+            });
+        }).wait();
+    }
+
+
     void chunk_process_launch(
             sycl::queue &q,
             uint *streams,
@@ -241,7 +275,6 @@ namespace syclZFP {
             bool last_chunk,
             uint nbitsmax,
             uint num_sm) {
-        uint maxpad32 = (nbitsmax + 31) / 32;
 
         // Increase the number of threads per ZFP block ("tile") as nbitsmax increases
         // Compromise between coalescing, inactive threads and shared memory size <= 48 KiB
@@ -250,48 +283,22 @@ namespace syclZFP {
         // The extra 2 elements of dynamic shared memory are needed to handle unaligned output data
         // and potential zero-padding to the next multiple of 64 bits.
         // Block sizes set so that the shared memory stays < 48 KiB.
-        auto kernel = [=]<size_t tile_size, size_t num_tiles>() mutable {
-
-            using kernel_name = chunk_process_launch_kernel<tile_size, num_tiles>;
-
-            uint max_blocks = 0;
-            size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
-            cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
-            max_blocks *= num_sm;
-            max_blocks = std::min(nstream_chunk, max_blocks);
-            sycl::range<2> threads(num_tiles, tile_size);
-            sycl::range<2> grid_dim(1, max_blocks);
-            sycl::nd_range<2> kernel_parameters(threads * grid_dim, threads);
-
-            auto barrier = nd_range_barrier<2>::make_barrier(q, kernel_parameters);
-
-            q.submit([&](sycl::handler &cgh) {
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_in(shmem_count, cgh);
-                sycl::accessor<uint, 1, sycl::access::mode::read_write, sycl::target::local> sm_length(num_tiles, cgh);
-                cgh.parallel_for<kernel_name>(kernel_parameters, [=](sycl::nd_item<2> it) {
-                    auto sm_in_ptr = sm_in.get_pointer();
-                    auto sm_length_ptr = sm_length.get_pointer();
-                    concat_bitstreams_chunk<tile_size, num_tiles>(it, barrier, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, maxpad32, sm_in_ptr, sm_length_ptr);
-                });
-            }).wait();
-        };
-
         if (nbitsmax <= 352) {
             constexpr size_t tile_size = 1;
             constexpr size_t num_tiles = 512;
-            kernel.operator()<tile_size, num_tiles>();
+            dispatch_chunk_kernel<tile_size, num_tiles>(q, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, num_sm);
         } else if (nbitsmax <= 1504) {
             constexpr size_t tile_size = 4;
             constexpr size_t num_tiles = 128;
-            kernel.operator()<tile_size, num_tiles>();
+            dispatch_chunk_kernel<tile_size, num_tiles>(q, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, num_sm);
         } else if (nbitsmax <= 6112) {
             constexpr size_t tile_size = 16;
             constexpr size_t num_tiles = 32;
-            kernel.operator()<tile_size, num_tiles>();
+            dispatch_chunk_kernel<tile_size, num_tiles>(q, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, num_sm);
         } else {
             constexpr size_t tile_size = 64;
             constexpr size_t num_tiles = 8;
-            kernel.operator()<tile_size, num_tiles>();
+            dispatch_chunk_kernel<tile_size, num_tiles>(q, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, num_sm);
         }
     }
 }

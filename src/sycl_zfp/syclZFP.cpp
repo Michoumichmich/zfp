@@ -13,7 +13,7 @@
 
 #include "shared.h"
 
-//#define HAS_VARIABLE
+#define HAS_VARIABLE
 #ifdef HAS_VARIABLE
 
 #include "variable.hpp"
@@ -21,9 +21,6 @@
 #endif
 
 #include "pointers.hpp"
-#include "type_info.hpp"
-#include <iostream>
-#include <cassert>
 
 // we need to know about bitstream, but we don't
 // want duplicate symbols.

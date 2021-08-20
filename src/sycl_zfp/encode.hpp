@@ -269,7 +269,6 @@ namespace syclZFP {
             m_current_bit += n_bits;
             return bits >> (Word) n_bits;
         }
-
         uint write_bit(const unsigned int &bit) {
             const int wbits = sizeof(Word) * 8;
             int seg_start = (m_start_bit + m_current_bit) % wbits;
@@ -282,7 +281,7 @@ namespace syclZFP {
             // uint zero_shift = sizeof(Word) * 8 - n_bits;
 
             Word add = (Word) bit << shift;
-            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::device, sycl::access::address_space::local_space> ref(m_stream[write_index]);
+            ATOMIC_REF_NAMESPACE::atomic_ref<Word, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::work_group, sycl::access::address_space::local_space> ref(m_stream[write_index]);
             ref += add;
             m_current_bit += 1;
 
