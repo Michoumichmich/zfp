@@ -13,7 +13,7 @@
 
 #include "shared.h"
 
-#define HAS_VARIABLE
+//#define HAS_VARIABLE
 #ifdef HAS_VARIABLE
 
 #include "variable.hpp"
