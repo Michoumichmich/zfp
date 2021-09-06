@@ -212,14 +212,14 @@ namespace syclZFP {
             size_t last_stream = std::min(nstreams_chunk, i + grid_stride);
             size_t writing_to = (offsets[last_stream] + 31) / 32;
             size_t reading_from = (first_stream_chunk + i) * maxbits;
-            if (writing_to >= reading_from)
-                grid_barrier->wait(item);
-            else
-                item.barrier(sycl::access::fence_space::local_space);
+            //if (writing_to >= reading_from)
+            //    grid_barrier->wait(item);
+            //else
+            //    item.barrier(sycl::access::fence_space::local_space);
 
             // Compact the shared memory data of the whole thread block and write it to global memory
-            if (active_thread_block)
-                process<tile_size, num_tiles>(item, valid_stream, offset0, offset, length_bits, add_padding, tid, sm_in, sm_out, maxpad32, sm_length, streams);
+            if (active_thread_block){}
+       //         process<tile_size, num_tiles>(item, valid_stream, offset0, offset, length_bits, add_padding, tid, sm_in, sm_out, maxpad32, sm_length, streams);
         }
 
         // Reset the base of the offsets array, for the next chunk's prefix sum
@@ -229,7 +229,7 @@ namespace syclZFP {
 
 
     void cudaOccupancyMaxActiveBlocksPerMultiprocessor(uint *pInt, void (*param)(sycl::nd_item<2>, nd_range_barrier<2> *, uint *, size_t *, size_t, size_t, bool, size_t, size_t, uint *, uint *), size_t i, size_t count) {
-        *pInt = 2; //TODO
+        *pInt = 1; //TODO
     }
 
     template<int tile_size, int num_tiles>

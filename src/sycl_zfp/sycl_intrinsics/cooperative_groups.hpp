@@ -134,7 +134,7 @@ public:
         if (this_item.get_local_linear_id() == 0) {
             using atomic_ref_t = ATOMIC_REF_NAMESPACE::atomic_ref<
                     mask_t,
-                    ATOMIC_REF_NAMESPACE::memory_order::acq_rel,
+                    ATOMIC_REF_NAMESPACE::memory_order::relaxed, // TODO acq_rel
                     ATOMIC_REF_NAMESPACE::memory_scope::device,
                     sycl::access::address_space::global_space
             >;

@@ -19,23 +19,29 @@ namespace syclZFP {
                 }
                 pad_block(q + 16 * z + 4 * y, nx, 1);
             }
+#pragma unroll
             for (x = 0; x < 4; x++) {
                 pad_block(q + 16 * z + x, ny, 4);
             }
         }
 
+#pragma unroll
         for (y = 0; y < 4; y++)
-            for (x = 0; x < 4; x++)
-                pad_block(q + 4 * y + x, nz, 16);
+#pragma unroll
+                for (x = 0; x < 4; x++)
+                    pad_block(q + 4 * y + x, nz, 16);
     }
 
     template<typename Scalar>
     inline void gather3(Scalar *q, const Scalar *p, int sx, int sy, int sz) {
         int x, y, z;
+#pragma unroll
         for (z = 0; z < 4; z++, p += sz - 4 * sy)
-            for (y = 0; y < 4; y++, p += sy - 4 * sx)
-                for (x = 0; x < 4; x++, p += sx)
-                    *q++ = *p;
+#pragma unroll
+                for (y = 0; y < 4; y++, p += sy - 4 * sx)
+#pragma unroll
+                        for (x = 0; x < 4; x++, p += sx)
+                            *q++ = *p;
     }
 
     template<class Scalar, bool variable_rate>

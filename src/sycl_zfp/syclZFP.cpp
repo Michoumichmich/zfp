@@ -13,6 +13,7 @@
 
 #include "shared.h"
 
+
 //#define HAS_VARIABLE
 #ifdef HAS_VARIABLE
 
@@ -31,6 +32,7 @@
 #include "../inline/bitstream.c"
 
 namespace internal {
+
 
     size_t get_global_range(const sycl::id<3> &dims) {
         size_t res = 1;
@@ -354,35 +356,27 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
     if (field->type == zfp_type_float) {
         auto *data = (float *) d_data;
         if (variable_rate)
-            stream_bytes = internal::encode<float, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                         (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<float, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits, (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
         else
-            stream_bytes = internal::encode<float, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                          (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<float, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits, (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
     } else if (field->type == zfp_type_double) {
         auto *data = (double *) d_data;
         if (variable_rate)
-            stream_bytes = internal::encode<double, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                          (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<double, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits, (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
         else
-            stream_bytes = internal::encode<double, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                           (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<double, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits, (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
     } else if (field->type == zfp_type_int32) {
         auto *data = (int32_t *) d_data;
         if (variable_rate)
-            stream_bytes = internal::encode<int32_t, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                           (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<int32_t, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits, (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
         else
-            stream_bytes = internal::encode<int32_t, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                            (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<int32_t, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits, (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
     } else if (field->type == zfp_type_int64) {
         auto *data = (int64_t *) d_data;
         if (variable_rate)
-            stream_bytes = internal::encode<int64_t, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                           (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<int64_t, true>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits, (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
         else
-            stream_bytes = internal::encode<int64_t, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits,
-                                                            (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
+            stream_bytes = internal::encode<int64_t, false>(q, dims, stride, (int) stream->minbits, (int) buffer_maxbits, (int) stream->maxprec, stream->minexp, data, d_stream, d_bitlengths);
     }
 
 #ifdef HAS_VARIABLE
@@ -405,7 +399,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
             syclZFP::copy_length_launch(q, d_bitlengths, d_offsets, i, cur_blocks);
 
             // Prefix sum to turn length into offsets
-            cooperative_scan<scan_type::inclusive, sycl::plus<>>(q, offsets_out, d_offsets, cur_blocks + 1);
+            cooperative_scan<scan_type::inclusive, sycl::plus<>>(q, d_offsets, offsets_out, cur_blocks + 1);
             //  cub::DeviceScan::InclusiveSum(d_cubtemp, lcubtemp, d_offsets, d_offsets, cur_blocks + 1);
 
             // Compact the stream array in-place

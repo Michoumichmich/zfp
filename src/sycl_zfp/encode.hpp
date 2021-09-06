@@ -59,6 +59,7 @@ namespace syclZFP {
     template<class Scalar, int BlockSize>
     static int max_exponent(const Scalar *p) {
         Scalar max_val = 0;
+#pragma unroll
         for (int i = 0; i < BlockSize; ++i) {
             Scalar f = sycl::fabs(p[i]);
             max_val = sycl::max(max_val, f);
@@ -68,7 +69,7 @@ namespace syclZFP {
 
     // lifting transform of 4-vector
     template<class Int, int s>
-    static void fwd_lift(Int *p) {
+    static inline void fwd_lift(Int *p) {
 
         Int x = *p;
         p += s;
@@ -143,6 +144,7 @@ namespace syclZFP {
     template<typename Scalar, typename Int, int BlockSize>
     void fwd_cast(Int *iblock, const Scalar *fblock, int emax) {
         Scalar s = quantize_factor(emax, Scalar());
+#pragma unroll
         for (int i = 0; i < BlockSize; ++i) {
             iblock[i] = (Int) (s * fblock[i]);
         }
@@ -158,17 +160,23 @@ namespace syclZFP {
 
             int x, y, z;
             /* transform along x */
+#pragma unroll
             for (z = 0; z < 4; z++)
-                for (y = 0; y < 4; y++)
-                    fwd_lift<Int, 1>(p + 4 * y + 16 * z);
+#pragma unroll
+                    for (y = 0; y < 4; y++)
+                        fwd_lift<Int, 1>(p + 4 * y + 16 * z);
             /* transform along y */
+#pragma unroll
             for (x = 0; x < 4; x++)
-                for (z = 0; z < 4; z++)
-                    fwd_lift<Int, 4>(p + 16 * z + 1 * x);
+#pragma unroll
+                    for (z = 0; z < 4; z++)
+                        fwd_lift<Int, 4>(p + 16 * z + 1 * x);
             /* transform along z */
+#pragma unroll
             for (y = 0; y < 4; y++)
-                for (x = 0; x < 4; x++)
-                    fwd_lift<Int, 16>(p + 1 * x + 4 * y);
+#pragma unroll
+                    for (x = 0; x < 4; x++)
+                        fwd_lift<Int, 16>(p + 1 * x + 4 * y);
 
         }
 
@@ -181,9 +189,11 @@ namespace syclZFP {
 
             int x, y;
             /* transform along x */
+#pragma unroll
             for (y = 0; y < 4; y++)
                 fwd_lift<Int, 1>(p + 4 * y);
             /* transform along y */
+#pragma unroll
             for (x = 0; x < 4; x++)
                 fwd_lift<Int, 4>(p + 1 * x);
         }
@@ -200,7 +210,8 @@ namespace syclZFP {
     };
 
     template<typename Int, typename UInt, int BlockSize>
-    void fwd_order(const_perm_accessor acc, UInt *ublock, const Int *iblock) {
+    static inline void fwd_order(const_perm_accessor acc, UInt *ublock, const Int *iblock) {
+#pragma unroll
         for (uint i = 0; i < BlockSize; ++i) {
             ublock[i] = int2uint(iblock[(uint) acc[i]]);
         }
@@ -224,7 +235,8 @@ namespace syclZFP {
 
         template<typename T>
         void print_bits(T bits, sycl::stream &os) {
-            const int bit_size = sizeof(T) * 8;
+            constexpr int bit_size = sizeof(T) * 8;
+#pragma unroll
             for (int i = bit_size - 1; i >= 0; --i) {
                 T one = 1;
                 T mask = one << i;
@@ -329,6 +341,7 @@ namespace syclZFP {
         for (int k = intprec, n = 0; bits && k-- > kmin;) {
             /* step 1: extract bit plane #k to x */
             uint64_t x = 0;
+#pragma unroll
             for (int i = 0; i < BlockSize; i++) {
                 x += (uint64_t) ((ublock[i] >> k) & 1u) << i;
             }

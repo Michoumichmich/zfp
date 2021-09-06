@@ -115,7 +115,7 @@ namespace parallel_primitives {
     }
 
     template<scan_type type, typename func, typename T>
-    void cooperative_scan(sycl::queue &q, T *output, const T *input, index_t length) {
+    void cooperative_scan(sycl::queue &q, const T *input, T *output, index_t length) {
         auto d_out = sycl::malloc_device<T>(length, q);
         auto d_in = sycl::malloc_device<T>(length, q);
 

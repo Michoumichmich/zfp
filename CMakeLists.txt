@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
+
 # Enable MACOSX_RPATH by default
 cmake_policy(SET CMP0042 NEW)
 
@@ -183,12 +184,13 @@ endif()
 if(ZFP_WITH_SYCL)
   set(CMAKE_CXX_STANDARD 17)
 
-
   #set(DPCPP_FLAGS -fsycl -fsycl-targets=spir64_x86_64-unknown-unknown-sycldevice -DSYCL_USE_NATIVE_FP_ATOMICS)
-  set(DPCPP_FLAGS -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Wno-unknown-cuda-version -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75)
+  set(DPCPP_FLAGS -fsycl -fsycl-targets=nvptx64-nvidia-cuda--sm_75)
   set(WARNING_FLAGS "-Wall -Wextra -Wshadow -Wdouble-promotion -fno-common -Winit-self -Wuninitialized -Wmissing-declarations -Woverloaded-virtual")
   set(EXTRA_W_FLAGS "-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-declarations -Wmissing-include-dirs  -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-overflow=5") #-Wnoexcept -Wold-style-cast -Wstrict-null-sentinel -switch-default -Wlogical-op
   set(DISABLED_WARNINGS "-Wno-c++20-extensions -Wno-undef -Wno-unused -Wno-unused-parameter")
+  set(OPT_FLAGS "-march=native -mtune=native -Ofast -fomit-frame-pointer")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${OPT_FLAGS} ${DISABLED_WARNINGS}")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${WARNING_FLAGS} ${EXTRA_W_FLAGS} ${DISABLED_WARNINGS} -g -Og -v")
   include(cmake/FindSYCL.cmake)
   include_directories(include)
@@ -324,7 +326,7 @@ if(BUILD_EXAMPLES)
 endif()
 
 if(BUILD_TESTING)
-  # Disable gtest install to prevent clobbering existing installations 
+  # Disable gtest install to prevent clobbering existing installations
   option(INSTALL_GMOCK "Install Googlemock" OFF)
   option(INSTALL_GTEST "Install Googletest" OFF)
 
