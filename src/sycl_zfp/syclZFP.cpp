@@ -351,7 +351,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
         return 0;
     }
 
-    int num_sm = (int) q.get_device().get_info<sycl::info::device::max_compute_units>();
+    uint num_sm = q.get_device().get_info<sycl::info::device::max_compute_units>();
 
     Word *d_stream = internal::setup_device_stream_compress(q, stream, field);
     ushort *d_bitlengths = internal::setup_device_nbits_compress(q, stream, field, variable_rate);
@@ -386,7 +386,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
 
 #ifdef HAS_VARIABLE
     if (variable_rate) {
-        int chunk_size = num_sm * 1024;
+        uint chunk_size = num_sm * 1024;
         auto d_offsets = sycl::malloc_device<uint64_t>(chunk_size + 1, q);
         auto offsets_out = sycl::malloc_device<uint64_t>(chunk_size + 1, q);
 
@@ -397,7 +397,7 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
             int cur_blocks = chunk_size;
             bool last_chunk = false;
             if (i + chunk_size > blocks) {
-                cur_blocks = (int) (blocks - i);
+                cur_blocks = (blocks - i);
                 last_chunk = true;
             }
             // Copy the 16-bit lengths in the offset array
@@ -493,7 +493,6 @@ void sycl_decompress(zfp_stream *stream, zfp_field *field) {
 
     size_t type_size = zfp_type_size(field->type);
     size_t field_size = internal::get_global_range(dims);
-
 
     size_t bytes = type_size * field_size;
     internal::cleanup_device_ptr(q, stream->stream->begin, d_stream, 0, 0, field->type);

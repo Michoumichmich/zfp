@@ -12,8 +12,9 @@ namespace syclZFP {
      * to compute prefix sums. The first value in offsets is the "base" of the prefix sum
      */
     void copy_length(size_t index, const ushort *length, size_t *offsets, size_t first_stream, int nstreams_chunk) {
-        if (index >= nstreams_chunk)
+        if (index >= nstreams_chunk) {
             return;
+        }
         offsets[index + 1] = length[first_stream + index];
     }
 
@@ -48,8 +49,9 @@ namespace syclZFP {
             // Align even if already aligned
             uint low = streams[offset_32 + i];
             uint high = 0;
-            if ((i + 1) * 32 < misaligned + length_bits)
+            if ((i + 1) * 32 < misaligned + length_bits) {
                 high = streams[offset_32 + i + 1];
+            }
             sm[item.get_local_id(0) * maxpad32 + i] = sycl::ext::funnelshift_r(low, high, misaligned);
         }
     }
@@ -90,12 +92,14 @@ namespace syclZFP {
 
                 // Mask out neighbor bitstreams
                 uint mask = 0xffffffff;
-                if (i == 0)
+                if (i == 0) {
                     mask &= 0xffffffff << misaligned;
-                if ((i + 1) * 32 > misaligned + length_bits)
+                }
+                if ((i + 1) * 32 > misaligned + length_bits) {
                     mask &= ~(0xffffffff << ((misaligned + length_bits) & 31));
-
-                ATOMIC_REF_NAMESPACE::atomic_ref<uint, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::work_group, sycl::access::address_space::local_space> ref(sm_out[off_smout + i]);
+                }
+                auto addr = sm_out + off_smout + i;
+                ATOMIC_REF_NAMESPACE::atomic_ref<uint, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::work_group, sycl::access::address_space::local_space> ref(*addr);
                 ref += v1 & mask;
             }
         }
@@ -103,27 +107,33 @@ namespace syclZFP {
         // First thread working on each bistream writes the length in shared memory
         // Add zero-padding bits if needed (last bitstream of last chunk)
         // The extra bits in shared mempory are already zeroed.
-        if (item.get_local_id(1) == 0)
+        if (item.get_local_id(1) == 0) {
             sm_length[item.get_local_id(0)] = length_bits + add_padding;
+        }
 
         // This synchthreads protects sm_out and sm_length.
         item.barrier(sycl::access::fence_space::local_space);
 
         // Compute total length for the threadblock
         uint total_length = 0;
-        for (size_t i = tid & 31; i < num_tiles; i += 32)
+        for (size_t i = tid & 31; i < num_tiles; i += 32) {
             total_length += sm_length[i];
-        for (size_t i = 1; i < item.get_sub_group().get_local_range().size(); i *= 2)
+        }
+        for (size_t i = 1; i < item.get_sub_group().get_local_range().size(); i *= 2) {
             total_length += sycl::permute_group_by_xor(item.get_sub_group(), total_length, i);
+        }
 
         // Write the shared memory output data to global memory, using all the threads
         for (size_t i = tid; i * 32 < misaligned0 + total_length; i += tile_size * num_tiles) {
             // Mask out the beginning and end of the block if unaligned
             uint mask = 0xffffffff;
-            if (i == 0)
+            if (i == 0) {
                 mask &= 0xffffffff << misaligned0;
-            if ((i + 1) * 32 > misaligned0 + total_length)
+            }
+
+            if ((i + 1) * 32 > misaligned0 + total_length) {
                 mask &= ~(0xffffffff << ((misaligned0 + total_length) & 31));
+            }
             // Reset the shared memory to zero for the next iteration.
             uint value = sm_out[i];
             sm_out[i] = 0;
@@ -133,13 +143,14 @@ namespace syclZFP {
                 output[offset0 + i] = value;
             else {
                 uint assumed, old = output[offset0 + i];
-                ATOMIC_REF_NAMESPACE::atomic_ref<uint,
-                        ATOMIC_REF_NAMESPACE::memory_order::relaxed,
-                        ATOMIC_REF_NAMESPACE::memory_scope::work_group,
-                        sycl::access::address_space::global_device_space>
-                        ref(output[offset0 + i]);
                 do {
                     assumed = old;
+                    auto addr = output + offset0 + i;
+                    ATOMIC_REF_NAMESPACE::atomic_ref<uint,
+                            ATOMIC_REF_NAMESPACE::memory_order::relaxed,
+                            ATOMIC_REF_NAMESPACE::memory_scope::work_group,
+                            sycl::access::address_space::global_device_space>
+                            ref(*addr);
                     old = ref.compare_exchange_strong(assumed, (assumed & ~mask) + (value & mask));
                 } while (assumed != old);
             }
@@ -179,8 +190,10 @@ namespace syclZFP {
         size_t my_stream = first_bitstream_block + item.get_local_id(0);
 
         // Zero the output shared memory. Will be reset again inside process().
-        for (size_t i = tid; i < num_tiles * maxpad32 + 2; i += tile_size * num_tiles)
+        for (size_t i = tid; i < num_tiles * maxpad32 + 2; i += tile_size * num_tiles) {
             sm_out[i] = 0;
+        }
+
 
         // Loop on all the bitstreams of the current chunk, using the whole resident grid.
         // All threads must enter this loop, as they have to synchronize inside.
@@ -191,8 +204,9 @@ namespace syclZFP {
             size_t offset = 0;
             uint length_bits = 0;
             uint add_padding = 0;
-            if (active_thread_block)
+            if (active_thread_block) {
                 offset0 = offsets[first_bitstream_block + i];
+            }
 
             if (valid_stream) {
                 offset = offsets[my_stream + i];
@@ -212,25 +226,25 @@ namespace syclZFP {
             size_t last_stream = std::min(nstreams_chunk, i + grid_stride);
             size_t writing_to = (offsets[last_stream] + 31) / 32;
             size_t reading_from = (first_stream_chunk + i) * maxbits;
-            //if (writing_to >= reading_from)
-            //    grid_barrier->wait(item);
-            //else
-            //    item.barrier(sycl::access::fence_space::local_space);
+            if (writing_to >= reading_from) {
+                grid_barrier->wait(item);
+            } else {
+                item.barrier(sycl::access::fence_space::local_space);
+            }
 
             // Compact the shared memory data of the whole thread block and write it to global memory
-            if (active_thread_block){}
-       //         process<tile_size, num_tiles>(item, valid_stream, offset0, offset, length_bits, add_padding, tid, sm_in, sm_out, maxpad32, sm_length, streams);
+            if (active_thread_block) {
+                process<tile_size, num_tiles>(item, valid_stream, offset0, offset, length_bits, add_padding, tid, sm_in, sm_out, maxpad32, sm_length, streams);
+            }
+
         }
 
         // Reset the base of the offsets array, for the next chunk's prefix sum
-        if (item.get_group(1) == 0 && tid == 0)
+        if (item.get_group(1) == 0 && tid == 0) {
             offsets[0] = offsets[nstreams_chunk];
+        }
     }
 
-
-    void cudaOccupancyMaxActiveBlocksPerMultiprocessor(uint *pInt, void (*param)(sycl::nd_item<2>, nd_range_barrier<2> *, uint *, size_t *, size_t, size_t, bool, size_t, size_t, uint *, uint *), size_t i, size_t count) {
-        *pInt = 1; //TODO
-    }
 
     template<int tile_size, int num_tiles>
     struct chunk_process_launch_kernel;
@@ -247,10 +261,8 @@ namespace syclZFP {
             uint num_sm) {
         using kernel_name = chunk_process_launch_kernel<tile_size, num_tiles>;
         uint maxpad32 = (nbitsmax + 31) / 32;
-        uint max_blocks = 0;
+        uint max_blocks = num_sm;
         size_t shmem_count = (2 * num_tiles * maxpad32 + 2);
-        cudaOccupancyMaxActiveBlocksPerMultiprocessor(&max_blocks, concat_bitstreams_chunk<tile_size, num_tiles>, tile_size * num_tiles, shmem_count);
-        max_blocks *= num_sm;
         max_blocks = std::min(nstream_chunk, max_blocks);
         sycl::range<2> threads(num_tiles, tile_size);
         sycl::range<2> grid_dim(1, max_blocks);
