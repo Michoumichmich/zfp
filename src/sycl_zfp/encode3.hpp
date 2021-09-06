@@ -5,11 +5,25 @@
 
 namespace syclZFP {
 
+    template<typename T>
+    void static inline prefetch(const T *ptr) {
+#if defined (__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
+        if constexpr (sizeof(ptr) == 8) {
+            asm("prefetch.L1 [%0];" :  : "l"(ptr));
+        } else {
+            asm("prefetch.L1 [%0];" :  : "r"(ptr));
+        }
+#else
+        (void) ptr;
+#endif
+    }
+
+
     template<class Scalar, bool variable_rate>
     class encode3_kernel;
 
     template<typename Scalar>
-    inline void gather_partial3(Scalar *q, const Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
+    static inline void gather_partial3(Scalar *q, const Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
         int x, y, z;
         for (z = 0; z < nz; z++, p += sz - ny * sy) {
             for (y = 0; y < ny; y++, p += sy - nx * sx) {
@@ -34,15 +48,18 @@ namespace syclZFP {
     }
 
     template<typename Scalar>
-    inline void gather3(Scalar *q, const Scalar *p, int sx, int sy, int sz) {
+    static inline void gather3(Scalar *q, const Scalar *p, int sx, int sy, int sz) {
         int x, y, z;
 #pragma unroll
-        for (z = 0; z < 4; z++, p += sz - 4 * sy)
+        for (z = 0; z < 4; z++, p += sz - 4 * sy) {
 #pragma unroll
-                for (y = 0; y < 4; y++, p += sy - 4 * sx)
+            for (y = 0; y < 4; y++, p += sy - 4 * sx) {
 #pragma unroll
-                        for (x = 0; x < 4; x++, p += sx)
-                            *q++ = *p;
+                for (x = 0; x < 4; x++, p += sx) {
+                    *q++ = *p;
+                }
+            }
+        }
     }
 
     template<class Scalar, bool variable_rate, bool partial>
@@ -83,7 +100,7 @@ namespace syclZFP {
     // Launch the encode kernel
     //
     template<class Scalar, bool variable_rate>
-    size_t encode3launch(
+    static inline size_t encode3launch(
             sycl::queue &q,
             sycl::id<3> dims,
             int64_3_t stride,

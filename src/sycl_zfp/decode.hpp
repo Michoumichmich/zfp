@@ -227,7 +227,7 @@ namespace syclZFP {
 
         if (s_cont) {
             int ebits = get_ebits<Scalar>() + 1;
-            int emax;
+            int emax=0;
             if constexpr (!is_int<Scalar>()) {
                 // read in the shared exponent
                 emax = (int) reader.read_bits(ebits - 1) - get_ebias<Scalar>();

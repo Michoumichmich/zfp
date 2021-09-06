@@ -26,7 +26,7 @@ namespace syclZFP {
     }
 
     template<int s, typename Scalar>
-    inline void pad_block(Scalar *p, int n) {
+    static inline void pad_block(Scalar *p, int n) {
         switch (n) {
             case 0:
                 p[0 * s] = 0;
@@ -46,7 +46,7 @@ namespace syclZFP {
     }
 
     template<class Scalar>
-    static int exponent(Scalar x) {
+    static inline int exponent(Scalar x) {
         if (x > 0) {
             int e;
             FREXP(x, &e);
@@ -57,7 +57,7 @@ namespace syclZFP {
     }
 
     template<class Scalar, int BlockSize>
-    static int max_exponent(const Scalar *p) {
+    static inline int max_exponent(const Scalar *p) {
         Scalar max_val = 0;
 #pragma unroll BlockSize
         for (int i = 0; i < BlockSize; ++i) {
@@ -128,7 +128,7 @@ namespace syclZFP {
 
 
     template<typename Scalar>
-    Scalar inline quantize_factor(const int &exponent, Scalar);
+    static Scalar inline quantize_factor(const int &exponent, Scalar);
 
     template<>
     float inline quantize_factor<float>(const int &exponent, float) {
@@ -281,7 +281,7 @@ namespace syclZFP {
             ref += add;
 
             // n_bits straddles the word boundary
-            bool straddle = seg_start < sizeof(Word) * 8 && seg_end >= sizeof(Word) * 8;
+            bool straddle = seg_start < (int) sizeof(Word) * 8 && seg_end >= (int) sizeof(Word) * 8;
 
             if (straddle) {
                 Word rem = b >> (sizeof(Word) * 8 - (uint) shift);
@@ -324,7 +324,7 @@ namespace syclZFP {
     };
 
     template<typename Int, int BlockSize>
-    int inline encode_block(BlockWriter<BlockSize> &stream, int maxbits, int maxprec, Int *iblock) {
+    int static inline encode_block(BlockWriter<BlockSize> &stream, int maxbits, int maxprec, Int *iblock) {
         // perform decorrelating transform
         transform<BlockSize> tform;
         tform.fwd_xform(iblock);
@@ -365,7 +365,7 @@ namespace syclZFP {
     }
 
     template<typename Scalar, int BlockSize>
-    int inline zfp_encode_block(
+    int static inline zfp_encode_block(
             Scalar *fblock,
             const int minbits,
             const int maxbits,
