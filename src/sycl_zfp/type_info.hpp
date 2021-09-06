@@ -7,79 +7,79 @@
 namespace syclZFP {
 
     template<typename T>
-    inline int get_ebias();
+    constexpr inline int get_ebias();
 
     template<>
-    inline int get_ebias<double>() { return 1023; }
+    constexpr inline int get_ebias<double>() { return 1023; }
 
     template<>
-    inline int get_ebias<float>() { return 127; }
+    constexpr inline int get_ebias<float>() { return 127; }
 
     template<>
-    inline int get_ebias<int64_t>() { return 0; }
+    constexpr inline int get_ebias<int64_t>() { return 0; }
 
     template<>
-    inline int get_ebias<int32_t>() { return 0; }
+    constexpr inline int get_ebias<int32_t>() { return 0; }
 
     template<typename T>
-    inline int get_ebits();
+    constexpr inline int get_ebits();
 
     template<>
-    inline int get_ebits<double>() { return 11; }
+    constexpr inline int get_ebits<double>() { return 11; }
 
     template<>
-    inline int get_ebits<float>() { return 8; }
+    constexpr inline int get_ebits<float>() { return 8; }
 
     template<>
-    inline int get_ebits<int32_t>() { return 0; }
+    constexpr inline int get_ebits<int32_t>() { return 0; }
 
     template<>
-    inline int get_ebits<int64_t>() { return 0; }
+    constexpr inline int get_ebits<int64_t>() { return 0; }
 
     template<typename T>
-    inline int get_precision();
+    constexpr inline int get_precision();
 
     template<>
-    inline int get_precision<double>() { return 64; }
+    constexpr inline int get_precision<double>() { return 64; }
 
     template<>
-    inline int get_precision<int64_t>() { return 64; }
+    constexpr inline int get_precision<int64_t>() { return 64; }
 
     template<>
-    inline int get_precision<float>() { return 32; }
+    constexpr inline int get_precision<float>() { return 32; }
 
     template<>
-    inline int get_precision<int32_t>() { return 32; }
+    constexpr inline int get_precision<int32_t>() { return 32; }
 
     template<typename T>
-    inline int get_min_exp();
+    constexpr inline int get_min_exp();
 
     template<>
-    inline int get_min_exp<double>() { return -1074; }
+    constexpr inline int get_min_exp<double>() { return -1074; }
 
     template<>
-    inline int get_min_exp<float>() { return -1074; }
+    constexpr inline int get_min_exp<float>() { return -1074; }
 
     template<>
-    inline int get_min_exp<int64_t>() { return 0; }
+    constexpr inline int get_min_exp<int64_t>() { return 0; }
 
     template<>
-    inline int get_min_exp<int32_t>() { return 0; }
+    constexpr inline int get_min_exp<int32_t>() { return 0; }
 
     template<typename T>
-    inline int scalar_sizeof();
+    constexpr inline int scalar_sizeof();
 
     template<>
-    inline int scalar_sizeof<double>() { return 8; }
+    constexpr inline int scalar_sizeof<double>() { return 8; }
 
     template<>
-    inline int scalar_sizeof<int64_t>() { return 8; }
+    constexpr inline int scalar_sizeof<int64_t>() { return 8; }
 
     template<>
-    inline int scalar_sizeof<float>() { return 4; }
+    constexpr inline int scalar_sizeof<float>() { return 4; }
 
     template<>
-    inline int scalar_sizeof<int32_t>() { return 4; }
+    constexpr inline int scalar_sizeof<int32_t>() { return 4; }
 
     template<typename T>
     struct zfp_traits;
@@ -109,17 +109,17 @@ namespace syclZFP {
     };
 
     template<typename T>
-    inline bool is_int() {
+    constexpr inline bool is_int() {
         return false;
     }
 
     template<>
-    inline bool is_int<int32_t>() {
+    constexpr inline bool is_int<int32_t>() {
         return true;
     }
 
     template<>
-    inline bool is_int<int64_t>() {
+    constexpr inline bool is_int<int64_t>() {
         return true;
     }
 

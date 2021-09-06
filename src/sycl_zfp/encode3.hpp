@@ -43,8 +43,8 @@ namespace syclZFP {
                             *q++ = *p;
     }
 
-    template<class Scalar, bool variable_rate>
-    void syclEncode3(
+    template<class Scalar, bool variable_rate, bool partial>
+    static inline void syclEncode3(
             const size_t &block_idx,
             const int &minbits,
             const int &maxbits,
@@ -55,39 +55,17 @@ namespace syclZFP {
             ushort *block_bits,
             const sycl::id<3> &dims,
             const int64_3_t &stride,
-            const sycl::id<3> &padded_dims,
-            const size_t &tot_blocks
+            const sycl::id<3> &block
     ) {
-
-        if (block_idx >= tot_blocks) {
-            // we can't launch the exact number of blocks
-            // so just exit if this isn't real
-            return;
-        }
-
-        sycl::id<3> block_dims = padded_dims >> 2;
-
-        // logical pos in 3d array
-        sycl::id<3> block;
-        block[2] = (block_idx % block_dims[2]) * 4;
-        block[1] = ((block_idx / block_dims[2]) % block_dims[1]) * 4;
-        block[0] = (block_idx / (block_dims[2] * block_dims[1])) * 4;
-
         // default strides
         const int64_t offset = (int64_t) block[2] * stride.x + (int64_t) block[1] * stride.y + (int64_t) block[0] * stride.z;
         Scalar fblock[ZFP_3D_BLOCK_SIZE];
 
-        bool partial = false;
-        if (block[2] + 4 > dims[2]) partial = true;
-        if (block[1] + 4 > dims[1]) partial = true;
-        if (block[0] + 4 > dims[0]) partial = true;
-
-        if (partial) {
+        if constexpr (partial) {
             const uint nx = block[2] + 4 > dims[2] ? dims[2] - block[2] : 4;
             const uint ny = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
             const uint nz = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
             gather_partial3(fblock, scalars + offset, (int) nx, (int) ny, (int) nz, stride.x, stride.y, stride.z);
-
         } else {
             gather3(fblock, scalars + offset, stride.x, stride.y, stride.z);
         }
@@ -139,23 +117,30 @@ namespace syclZFP {
         sycl::nd_range<3> kernel_parameters(grid_size * block_size, block_size);
         auto e = q.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<encode3_kernel<Scalar, variable_rate>>(kernel_parameters, [=](sycl::nd_item<3> item) {
-                syclEncode3<Scalar, variable_rate>
-                        (item.get_global_linear_id(),
-                         minbits,
-                         maxbits,
-                         maxprec,
-                         minexp,
-                         d_data,
-                         stream,
-                         d_block_bits,
-                         dims,
-                         stride,
-                         zfp_pad,
-                         zfp_blocks
-                        );
+                const size_t block_idx = item.get_global_linear_id();
+                if (block_idx >= zfp_blocks) {
+                    return;
+                }
+                sycl::id<3> block_dims = zfp_pad >> 2;
+                // logical pos in 3d array
+                sycl::id<3> block;
+                block[2] = (block_idx % block_dims[2]) * 4;
+                block[1] = ((block_idx / block_dims[2]) % block_dims[1]) * 4;
+                block[0] = (block_idx / (block_dims[2] * block_dims[1])) * 4;
+
+                bool partial = false;
+                if (block[2] + 4 > dims[2]) partial = true;
+                if (block[1] + 4 > dims[1]) partial = true;
+                if (block[0] + 4 > dims[0]) partial = true;
+                if (partial) {
+                    syclEncode3<Scalar, variable_rate, true>(block_idx, minbits, maxbits, maxprec, minexp, d_data, stream, d_block_bits, dims, stride, block);
+                } else {
+                    syclEncode3<Scalar, variable_rate, false>(block_idx, minbits, maxbits, maxprec, minexp, d_data, stream, d_block_bits, dims, stride, block);
+                }
             });
         });
         e.wait();
+
 
 #ifdef SYCL_ZFP_RATE_PRINT
         double ns = e.template get_profiling_info<sycl::info::event_profiling::command_end>()

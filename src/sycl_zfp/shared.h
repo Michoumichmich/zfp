@@ -51,6 +51,7 @@ namespace syclZFP {
     void print_bits(sycl::stream &os, const T &bits) {
         const int bit_size = sizeof(T) * 8;
 
+#pragma unroll
         for (int i = bit_size - 1; i >= 0; --i) {
             T one = 1;
             T mask = one << i;
@@ -104,6 +105,13 @@ namespace syclZFP {
 #pragma message "Missing SYCL information descriptor to check the max number of work groups allowed"
         return {(1 << 30) - 1, (1 << 30) - 1, (1 << 30) - 1};
 #endif
+    }
+
+    template<typename KernelName>
+    size_t get_max_work_items(sycl::queue &q) {
+        sycl::kernel_id id = sycl::get_kernel_id<KernelName>();
+        auto kernel = sycl::get_kernel_bundle<sycl::bundle_state::executable>(q.get_context()).get_kernel(id);
+        return kernel.get_info<sycl::info::kernel_device_specific::work_group_size>(q.get_device());
     }
 
     // size is assumed to have a pad to the nearest preffered block size

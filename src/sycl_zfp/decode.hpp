@@ -221,14 +221,14 @@ namespace syclZFP {
         //
         // there is no skip path for integers so just continue
         //
-        if (!is_int<Scalar>()) {
+        if constexpr (!is_int<Scalar>()) {
             s_cont = (int) reader.read_bit();
         }
 
         if (s_cont) {
             int ebits = get_ebits<Scalar>() + 1;
             int emax;
-            if (!is_int<Scalar>()) {
+            if constexpr (!is_int<Scalar>()) {
                 // read in the shared exponent
                 emax = (int) reader.read_bits(ebits - 1) - get_ebias<Scalar>();
             } else {

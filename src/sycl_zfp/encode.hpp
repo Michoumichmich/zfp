@@ -11,15 +11,15 @@ namespace syclZFP {
     }
 
     template<int BlockSize>
-    static int precision(int maxexp, int maxprec, int minexp) {
+    static inline int precision(int maxexp, int maxprec, int minexp) {
         // Followig logic from precision() in zfp/src/template/codecf.c
-        if (BlockSize == ZFP_1D_BLOCK_SIZE)
+        if constexpr (BlockSize == ZFP_1D_BLOCK_SIZE)
             return MIN(maxprec, MAX(0, maxexp - minexp + 4));
-        else if (BlockSize == ZFP_2D_BLOCK_SIZE)
+        else if constexpr (BlockSize == ZFP_2D_BLOCK_SIZE)
             return MIN(maxprec, MAX(0, maxexp - minexp + 6));
-        else if (BlockSize == ZFP_3D_BLOCK_SIZE)
+        else if constexpr(BlockSize == ZFP_3D_BLOCK_SIZE)
             return MIN(maxprec, MAX(0, maxexp - minexp + 8));
-        else if (BlockSize == ZFP_4D_BLOCK_SIZE)
+        else if constexpr(BlockSize == ZFP_4D_BLOCK_SIZE)
             return MIN(maxprec, MAX(0, maxexp - minexp + 10));
         else
             return 0;
@@ -59,7 +59,7 @@ namespace syclZFP {
     template<class Scalar, int BlockSize>
     static int max_exponent(const Scalar *p) {
         Scalar max_val = 0;
-#pragma unroll
+#pragma unroll BlockSize
         for (int i = 0; i < BlockSize; ++i) {
             Scalar f = sycl::fabs(p[i]);
             max_val = sycl::max(max_val, f);
@@ -70,7 +70,6 @@ namespace syclZFP {
     // lifting transform of 4-vector
     template<class Int, int s>
     static inline void fwd_lift(Int *p) {
-
         Int x = *p;
         p += s;
         Int y = *p;
@@ -143,8 +142,8 @@ namespace syclZFP {
 
     template<typename Scalar, typename Int, int BlockSize>
     static inline void fwd_cast(Int *iblock, const Scalar *fblock, int emax) {
-        Scalar s = quantize_factor(emax, Scalar());
-#pragma unroll
+        const Scalar s = quantize_factor(emax, Scalar());
+#pragma unroll BlockSize
         for (int i = 0; i < BlockSize; ++i) {
             iblock[i] = (Int) (s * fblock[i]);
         }
@@ -184,7 +183,7 @@ namespace syclZFP {
     template<>
     struct transform<16> {
         template<typename Int>
-        void fwd_xform(Int *p) {
+        static inline void fwd_xform(Int *p) {
 
             int x, y;
             /* transform along x */
@@ -202,7 +201,7 @@ namespace syclZFP {
     template<>
     struct transform<4> {
         template<typename Int>
-        void fwd_xform(Int *p) {
+        static inline void fwd_xform(Int *p) {
             fwd_lift<Int, 1>(p);
         }
 
@@ -259,7 +258,7 @@ namespace syclZFP {
         }
 
         inline size_t write_bits(const uint64_t &bits, const int &n_bits) {
-            const int wbits = sizeof(Word) * 8;
+            constexpr int wbits = sizeof(Word) * 8;
             int seg_start = (m_start_bit + m_current_bit) % wbits;
             int write_index = m_word_index + ((m_start_bit + m_current_bit) / wbits);
             int seg_end = seg_start + n_bits - 1;
@@ -299,7 +298,7 @@ namespace syclZFP {
         }
 
         inline uint write_bit(const unsigned int &bit) {
-            const int wbits = sizeof(Word) * 8;
+            constexpr int wbits = sizeof(Word) * 8;
             int seg_start = (m_start_bit + m_current_bit) % wbits;
             int write_index = m_word_index + ((m_start_bit + m_current_bit) / wbits);
             int shift = seg_start;
@@ -341,14 +340,14 @@ namespace syclZFP {
         fwd_order<Int, UInt, BlockSize>(ublock, iblock);
 
         // encode integer coefficients
-        int intprec = (CHAR_BIT * sizeof(UInt));
+        constexpr int intprec = (CHAR_BIT * sizeof(UInt));
         int kmin = intprec > maxprec ? intprec - maxprec : 0;
         int bits = maxbits;
 
         for (int k = intprec, n = 0; bits && k-- > kmin;) {
             /* step 1: extract bit plane #k to x */
             uint64_t x = 0;
-#pragma unroll
+#pragma unroll BlockSize
             for (int i = 0; i < BlockSize; i++) {
                 x += (uint64_t) ((ublock[i] >> k) & 1u) << i;
             }
@@ -426,7 +425,6 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int32_t, 16>(
-
             int32_t *fblock,
             const int minbits,
             const int maxbits,
@@ -442,7 +440,6 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int64_t, 16>(
-
             int64_t *fblock,
             const int minbits,
             const int maxbits,
@@ -458,7 +455,6 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int32_t, 4>(
-
             int32_t *fblock,
             const int minbits,
             const int maxbits,
@@ -474,7 +470,6 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int64_t, 4>(
-
             int64_t *fblock,
             const int minbits,
             const int maxbits,
