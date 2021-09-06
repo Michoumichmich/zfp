@@ -200,7 +200,7 @@ namespace syclZFP {
 
 /* inverse lifting transform of 4-vector */
     template<class Int, int s>
-    static void inv_lift(Int *p) {
+    static inline void inv_lift(Int *p) {
         Int x, y, z, w;
         x = *p;
         p += s;
@@ -241,33 +241,6 @@ namespace syclZFP {
         *p = y;
         p -= s;
         *p = x;
-    }
-
-    template<int BlockSize>
-    sycl::buffer<uchar, 1> get_perm_buffer();
-
-    template<>
-    sycl::buffer<uchar, 1> get_perm_buffer<4>() {
-        sycl::buffer<uchar, 1> buf{perm_1, sycl::range<1>(4)};
-        buf.set_final_data(nullptr);
-        buf.set_write_back(false);
-        return buf;
-    }
-
-    template<>
-    sycl::buffer<uchar, 1> get_perm_buffer<16>() {
-        sycl::buffer<uchar, 1> buf{perm_2, sycl::range<1>(16)};
-        buf.set_final_data(nullptr);
-        buf.set_write_back(false);
-        return buf;
-    }
-
-    template<>
-    sycl::buffer<uchar, 1> get_perm_buffer<64>() {
-        sycl::buffer<uchar, 1> buf{perm_3, sycl::range<1>(64)};
-        buf.set_final_data(nullptr);
-        buf.set_write_back(false);
-        return buf;
     }
 
 

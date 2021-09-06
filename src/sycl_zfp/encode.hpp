@@ -209,10 +209,19 @@ namespace syclZFP {
     };
 
     template<typename Int, typename UInt, int BlockSize>
-    static inline void fwd_order(const const_perm_accessor &acc, UInt *ublock, const Int *iblock) {
-#pragma unroll
+    static inline void fwd_order(UInt *ublock, const Int *iblock) {
+        static constexpr auto arr = []() {
+            if constexpr (BlockSize == 64) {
+                return perm_3;
+            } else if constexpr (BlockSize == 16) {
+                return perm_2;
+            } else if constexpr (BlockSize == 4) {
+                return perm_1;
+            }
+        }();
+#pragma unroll BlockSize
         for (uint i = 0; i < BlockSize; ++i) {
-            ublock[i] = int2uint(iblock[acc[i]]);
+            ublock[i] = int2uint(iblock[arr[i]]);
         }
     }
 
@@ -316,7 +325,7 @@ namespace syclZFP {
     };
 
     template<typename Int, int BlockSize>
-    int inline encode_block(const const_perm_accessor &acc, BlockWriter<BlockSize> &stream, int maxbits, int maxprec, Int *iblock) {
+    int inline encode_block(BlockWriter<BlockSize> &stream, int maxbits, int maxprec, Int *iblock) {
         // perform decorrelating transform
         transform<BlockSize> tform;
         tform.fwd_xform(iblock);
@@ -329,7 +338,7 @@ namespace syclZFP {
         // reorder signed coefficients and convert to unsigned integer
         typedef typename zfp_traits<Int>::UInt UInt;
         UInt ublock[BlockSize];
-        fwd_order<Int, UInt, BlockSize>(acc, ublock, iblock);
+        fwd_order<Int, UInt, BlockSize>(ublock, iblock);
 
         // encode integer coefficients
         int intprec = (CHAR_BIT * sizeof(UInt));
@@ -358,7 +367,6 @@ namespace syclZFP {
 
     template<typename Scalar, int BlockSize>
     int inline zfp_encode_block(
-            const const_perm_accessor &acc,
             Scalar *fblock,
             const int minbits,
             const int maxbits,
@@ -377,7 +385,7 @@ namespace syclZFP {
             Int iblock[BlockSize];
             fwd_cast<Scalar, Int, BlockSize>(iblock, fblock, emax);
 
-            int bits = encode_block<Int, BlockSize>(acc, block_writer, maxbits - ebits, maxprec, iblock);
+            int bits = encode_block<Int, BlockSize>(block_writer, maxbits - ebits, maxprec, iblock);
             return ebits + bits;
         } else
             // Single bit (already memset to zero) to indicate all values are zero
@@ -386,7 +394,6 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int32_t, 64>(
-            const const_perm_accessor &acc,
             int32_t *fblock,
             const int minbits,
             const int maxbits,
@@ -396,14 +403,13 @@ namespace syclZFP {
             Word *stream) {
         BlockWriter<64> block_writer(stream, maxbits, block_idx);
         const int intprec = get_precision<int32_t>();
-        int bits = encode_block<int32_t, 64>(acc, block_writer, maxbits, intprec, fblock);
+        int bits = encode_block<int32_t, 64>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, minbits);
     }
 
 
     template<>
     int inline zfp_encode_block<int64_t, 64>(
-            const const_perm_accessor &acc,
             int64_t *fblock,
             const int minbits,
             const int maxbits,
@@ -413,14 +419,14 @@ namespace syclZFP {
             Word *stream) {
         BlockWriter<64> block_writer(stream, maxbits, block_idx);
         const int intprec = get_precision<int64_t>();
-        int bits = encode_block<int64_t, 64>(acc, block_writer, maxbits, intprec, fblock);
+        int bits = encode_block<int64_t, 64>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, minbits);
     }
 
 
     template<>
     int inline zfp_encode_block<int32_t, 16>(
-            const const_perm_accessor &acc,
+
             int32_t *fblock,
             const int minbits,
             const int maxbits,
@@ -430,13 +436,13 @@ namespace syclZFP {
             Word *stream) {
         BlockWriter<16> block_writer(stream, maxbits, block_idx);
         const int intprec = get_precision<int32_t>();
-        int bits = encode_block<int32_t, 16>(acc, block_writer, maxbits, intprec, fblock);
+        int bits = encode_block<int32_t, 16>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, minbits);
     }
 
     template<>
     int inline zfp_encode_block<int64_t, 16>(
-            const const_perm_accessor &acc,
+
             int64_t *fblock,
             const int minbits,
             const int maxbits,
@@ -446,13 +452,13 @@ namespace syclZFP {
             Word *stream) {
         BlockWriter<16> block_writer(stream, maxbits, block_idx);
         const int intprec = get_precision<int64_t>();
-        int bits = encode_block<int64_t, 16>(acc, block_writer, maxbits, intprec, fblock);
+        int bits = encode_block<int64_t, 16>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, minbits);
     }
 
     template<>
     int inline zfp_encode_block<int32_t, 4>(
-            const const_perm_accessor &acc,
+
             int32_t *fblock,
             const int minbits,
             const int maxbits,
@@ -462,13 +468,13 @@ namespace syclZFP {
             Word *stream) {
         BlockWriter<4> block_writer(stream, maxbits, block_idx);
         const int intprec = get_precision<int32_t>();
-        int bits = encode_block<int32_t, 4>(acc, block_writer, maxbits, intprec, fblock);
+        int bits = encode_block<int32_t, 4>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, minbits);
     }
 
     template<>
     int inline zfp_encode_block<int64_t, 4>(
-            const const_perm_accessor &acc,
+
             int64_t *fblock,
             const int minbits,
             const int maxbits,
@@ -478,7 +484,7 @@ namespace syclZFP {
             Word *stream) {
         BlockWriter<4> block_writer(stream, maxbits, block_idx);
         const int intprec = get_precision<int64_t>();
-        int bits = encode_block<int64_t, 4>(acc, block_writer, maxbits, intprec, fblock);
+        int bits = encode_block<int64_t, 4>(block_writer, maxbits, intprec, fblock);
         return sycl::max(bits, minbits);
     }
 

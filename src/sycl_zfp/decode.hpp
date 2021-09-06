@@ -116,9 +116,10 @@ namespace syclZFP {
         int bits = maxbits;
 
         // initialize data array to all zeros
-        memset(data, 0, Size * sizeof(UInt));
-
-
+#pragma unroll Size
+        for (int i = 0; i < Size; ++i) {
+            data[i] = 0;
+        }
         // decode one bit plane at a time from MSB to LSB
         for (int k = intprec, m = 0, n = 0; bits && (m = 0, k-- > kmin);) {
             // step 1: decode first n bits of bit plane #k
@@ -144,7 +145,7 @@ namespace syclZFP {
                 }
             }
             // step 3: deposit bit plane from x
-
+#pragma unroll Size
             for (int i = 0; i < Size; i++, x >>= 1)
                 data[i] += (UInt) (x & 1u) << k;
         }
@@ -165,17 +166,23 @@ namespace syclZFP {
         void inv_xform(Int *p) {
             int x, y, z;
             /* transform along z */
+#pragma unroll
             for (y = 0; y < 4; y++)
-                for (x = 0; x < 4; x++)
-                    inv_lift<Int, 16>(p + 1 * x + 4 * y);
+#pragma unroll
+                    for (x = 0; x < 4; x++)
+                        inv_lift<Int, 16>(p + 1 * x + 4 * y);
             /* transform along y */
+#pragma unroll
             for (x = 0; x < 4; x++)
-                for (z = 0; z < 4; z++)
-                    inv_lift<Int, 4>(p + 16 * z + 1 * x);
+#pragma unroll
+                    for (z = 0; z < 4; z++)
+                        inv_lift<Int, 4>(p + 16 * z + 1 * x);
             /* transform along x */
+#pragma unroll
             for (z = 0; z < 4; z++)
-                for (y = 0; y < 4; y++)
-                    inv_lift<Int, 1>(p + 4 * y + 16 * z);
+#pragma unroll
+                    for (y = 0; y < 4; y++)
+                        inv_lift<Int, 1>(p + 4 * y + 16 * z);
         }
 
     };
@@ -184,10 +191,11 @@ namespace syclZFP {
     struct inv_transform<16> {
         template<typename Int>
         void inv_xform(Int *p) {
-
+#pragma unroll
             for (int x = 0; x < 4; ++x) {
                 inv_lift<Int, 4>(p + 1 * x);
             }
+#pragma unroll
             for (int y = 0; y < 4; ++y) {
                 inv_lift<Int, 1>(p + 4 * y);
             }
@@ -205,7 +213,7 @@ namespace syclZFP {
     };
 
     template<typename Scalar, int BlockSize>
-    void zfp_decode(const_perm_accessor acc, BlockReader<BlockSize> &reader, Scalar *fblock, int maxbits) {
+    void zfp_decode(BlockReader<BlockSize> &reader, Scalar *fblock, int maxbits) {
         typedef typename syclZFP::zfp_traits<Scalar>::UInt UInt;
         typedef typename syclZFP::zfp_traits<Scalar>::Int Int;
 
@@ -232,9 +240,20 @@ namespace syclZFP {
             UInt ublock[BlockSize];
             decode_ints<Scalar, BlockSize, UInt>(reader, maxbits, ublock);
             Int iblock[BlockSize];
+
+            static constexpr auto arr = []() {
+                if constexpr (BlockSize == 64) {
+                    return perm_3;
+                } else if constexpr (BlockSize == 16) {
+                    return perm_2;
+                } else if constexpr (BlockSize == 4) {
+                    return perm_1;
+                }
+            }();
+
 #pragma unroll BlockSize
             for (uint i = 0; i < BlockSize; ++i) {
-                iblock[acc[i]] = uint2int(ublock[i]);
+                iblock[arr[i]] = uint2int(ublock[i]);
             }
 
             inv_transform<BlockSize> trans;

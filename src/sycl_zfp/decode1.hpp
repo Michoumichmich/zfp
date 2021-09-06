@@ -19,14 +19,14 @@ namespace syclZFP {
 
     inline void scatter1(const Scalar *q, Scalar *p, int sx) {
         int x;
+#pragma unroll
         for (x = 0; x < 4; x++, p += sx)
             *p = *q++;
     }
 
     template<class Scalar>
     void syclDecode1(
-            sycl::nd_item<3> item,
-            const_perm_accessor acc,
+            const size_t &block_idx,
             Word *blocks,
             Scalar *out,
             const size_t dim,
@@ -40,14 +40,12 @@ namespace syclZFP {
 
         const int intprec = get_precision<Scalar>();
 
-        const size_t block_idx = item.get_global_linear_id();
-
         if (block_idx >= total_blocks) return;
 
         BlockReader<4> reader(blocks, maxbits, block_idx, total_blocks);
         Scalar result[4] = {Scalar(0)};
 
-        zfp_decode(acc, reader, result, maxbits);
+        zfp_decode(reader, result, maxbits);
 
         size_t block = block_idx * 4ull;
         const int64_t offset = (int64_t) block * stride;
@@ -90,17 +88,11 @@ namespace syclZFP {
         sycl::range<3> block_size(1, 1, preferred_block_size);
         sycl::range<3> grid_size = calculate_global_work_size(q, total_blocks, preferred_block_size);
 
-#ifdef SYCL_ZFP_RATE_PRINT
-        auto before = std::chrono::steady_clock::now();
-#endif
         sycl::nd_range<3> kernel_parameters(grid_size * block_size, block_size);
-        auto buf = get_perm_buffer<4>();
-        q.submit([&](sycl::handler &cgh) {
-            auto acc = buf.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(cgh);
+        auto e = q.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<decode1_kernel<Scalar>>(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclDecode1<Scalar>
-                        (item,
-                         acc,
+                        (item.get_global_linear_id(),
                          stream,
                          d_data,
                          dim,
@@ -108,13 +100,14 @@ namespace syclZFP {
                          zfp_pad,
                          zfp_blocks, // total blocks to decode
                          maxbits);
-
             });
-        }).wait();
+        });
+        e.wait();
 
 #ifdef SYCL_ZFP_RATE_PRINT
-        auto after = std::chrono::steady_clock::now();
-        auto seconds = std::chrono::duration<double>(after - before).count();
+        double ns = e.template get_profiling_info<sycl::info::event_profiling::command_end>()
+                    - e.template get_profiling_info<sycl::info::event_profiling::command_start>();
+        auto seconds = ns / 1e9;
         double rate = (double(dim) * sizeof(Scalar)) / seconds;
         rate /= 1024.;
         rate /= 1024.;

@@ -1,12 +1,13 @@
 #pragma once
 
 #include <cctype>
+#include <array>
 
 namespace syclZFP {
 
 #define index_3d(x, y, z) ((x) + 4 * ((y) + 4 * (z)))
 
-    static constexpr uchar perm_3[64] = {
+    static constexpr std::array<uchar, 64> perm_3 = {
             index_3d(0, 0, 0), //  0 : 0
 
             index_3d(1, 0, 0), //  1 : 1
@@ -94,7 +95,7 @@ namespace syclZFP {
 
 #undef index_3d
 
-    static const uchar perm_1[4] =
+    static constexpr std::array<uchar, 4> perm_1 =
             {
                     0, 1, 2, 3
             };
@@ -102,7 +103,7 @@ namespace syclZFP {
 #define index(i, j) ((i) + 4 * (j))
 
 /* order coefficients (i, j) by i + j, then i^2 + j^2 */
-    static const uchar perm_2[16] = {
+    static constexpr std::array<uchar, 16> perm_2 = {
             index(0, 0), /*  0 : 0 */
 
             index(1, 0), /*  1 : 1 */
