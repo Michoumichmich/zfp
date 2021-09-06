@@ -13,19 +13,23 @@ namespace syclZFP {
 
     template<typename Scalar>
     inline void gather_partial1(Scalar *q, const Scalar *p, int nx, int sx) {
-        for (int x = 0; x < nx; x++, p += sx) { q[x] = *p; }
-        pad_block(q, nx, 1);
+        for (int x = 0; x < nx; x++, p += sx) {
+            q[x] = *p;
+        }
+        pad_block<1>(q, nx);
     }
 
     template<typename Scalar>
     inline void gather1(Scalar *q, const Scalar *p, int sx) {
 #pragma unroll
-        for (int x = 0; x < 4; x++, p += sx) { *q++ = *p; }
+        for (int x = 0; x < 4; x++, p += sx) {
+            *q++ = *p;
+        }
     }
 
     template<class Scalar, bool variable_rate>
     void syclEncode1(
-            const sycl::nd_item<3> &item,
+            const size_t &block_idx,
             int minbits,
             const int &maxbits,
             const int &maxprec,
@@ -37,8 +41,6 @@ namespace syclZFP {
             const int &sx,
             const size_t &padded_dim,
             const size_t &tot_blocks) {
-
-        const size_t block_idx = item.get_global_linear_id();
 
         if (block_idx >= tot_blocks) {
             // we can't launch the exact number of blocks
@@ -113,7 +115,7 @@ namespace syclZFP {
         auto e = q.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<encode1_kernel<Scalar, variable_rate>>(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclEncode1<Scalar, variable_rate>
-                        (item,
+                        (item.get_global_linear_id(),
                          minbits,
                          maxbits,
                          maxprec,

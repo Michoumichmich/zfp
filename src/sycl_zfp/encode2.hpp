@@ -11,28 +11,32 @@ namespace syclZFP {
     inline void gather_partial2(Scalar *q, const Scalar *p, int nx, int ny, int sx, int sy) {
         int x, y;
         for (y = 0; y < ny; y++, p += sy - nx * sx) {
-            for (x = 0; x < nx; x++, p += sx)
+            for (x = 0; x < nx; x++, p += sx) {
                 q[4 * y + x] = *p;
-            pad_block(q + 4 * y, nx, 1);
+            }
+            pad_block<1>(q + 4 * y, nx);
         }
 #pragma unroll
-        for (x = 0; x < 4; x++)
-            pad_block(q + x, ny, 4);
+        for (x = 0; x < 4; x++) {
+            pad_block<4>(q + x, ny);
+        }
     }
 
     template<typename Scalar>
     inline void gather2(Scalar *q, const Scalar *p, int sx, int sy) {
         int x, y;
 #pragma unroll
-        for (y = 0; y < 4; y++, p += sy - 4 * sx)
+        for (y = 0; y < 4; y++, p += sy - 4 * sx) {
 #pragma unroll
-                for (x = 0; x < 4; x++, p += sx)
-                    *q++ = *p;
+            for (x = 0; x < 4; x++, p += sx) {
+                *q++ = *p;
+            }
+        }
     }
 
     template<class Scalar, bool variable_rate>
     void syclEncode2(
-            const sycl::nd_item<3> &item,
+            const size_t &block_idx,
             const int &minbits,
             const int &maxbits,
             const int &maxprec,
@@ -44,8 +48,6 @@ namespace syclZFP {
             const int64_2_t &stride,
             const sycl::id<2> &padded_dims,
             const size_t &tot_blocks) {
-
-        const size_t block_idx = item.get_global_linear_id();
 
         if (block_idx >= tot_blocks) {
             // we can't launch the exact number of blocks
@@ -72,7 +74,6 @@ namespace syclZFP {
             const uint nx = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
             const uint ny = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
             gather_partial2(fblock, scalars + offset, (int) nx, (int) ny, stride.x, stride.y);
-
         } else {
             gather2(fblock, scalars + offset, stride.x, stride.y);
         }
@@ -130,7 +131,7 @@ namespace syclZFP {
 
             cgh.parallel_for<encode2_kernel<Scalar, variable_rate>>(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclEncode2<Scalar, variable_rate>
-                        (item,
+                        (item.get_global_linear_id(),
                          minbits,
                          maxbits,
                          maxprec,
@@ -142,7 +143,6 @@ namespace syclZFP {
                          stride,
                          zfp_pad,
                          zfp_blocks);
-
             });
         });
         e.wait();

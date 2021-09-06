@@ -10,22 +10,26 @@ namespace syclZFP {
     template<typename Scalar>
     inline void scatter_partial3(const Scalar *q, Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
         int x, y, z;
-        for (z = 0; z < nz; z++, p += sz - ny * sy, q += 4 * (4 - ny))
-            for (y = 0; y < ny; y++, p += sy - nx * sx, q += 1 * (4 - nx))
-                for (x = 0; x < nx; x++, p += sx, q++)
-                    *p = *q;
+        for (z = 0; z < nz; z++, p += sz - ny * sy, q += 4 * (4 - ny)) {
+            for (y = 0; y < ny; y++, p += sy - nx * sx, q += 1 * (4 - nx)) {
+                for (x = 0; x < nx; x++, p += sx, q++) { *p = *q; }
+            }
+        }
     }
 
     template<typename Scalar>
     inline void scatter3(const Scalar *q, Scalar *p, int sx, int sy, int sz) {
         int x, y, z;
 #pragma unroll
-        for (z = 0; z < 4; z++, p += sz - 4 * sy)
+        for (z = 0; z < 4; z++, p += sz - 4 * sy) {
 #pragma unroll
-                for (y = 0; y < 4; y++, p += sy - 4 * sx)
+            for (y = 0; y < 4; y++, p += sy - 4 * sx) {
 #pragma unroll
-                        for (x = 0; x < 4; x++, p += sx)
-                            *p = *q++;
+                for (x = 0; x < 4; x++, p += sx) {
+                    *p = *q++;
+                }
+            }
+        }
     }
 
 
@@ -38,7 +42,6 @@ namespace syclZFP {
             const int64_3_t &stride,
             const sycl::id<3> &padded_dims,
             int maxbits) {
-
 
         const size_t total_blocks = (padded_dims[2] * padded_dims[1] * padded_dims[0]) / 64;
 
@@ -72,7 +75,6 @@ namespace syclZFP {
             const uint nx = block[2] + 4u > dims[2] ? dims[2] - block[2] : 4;
             const uint ny = block[1] + 4u > dims[1] ? dims[1] - block[1] : 4;
             const uint nz = block[0] + 4u > dims[0] ? dims[0] - block[0] : 4;
-
             scatter_partial3(result, out + offset, (int) nx, (int) ny, (int) nz, stride.x, stride.y, stride.z);
         } else {
             scatter3(result, out + offset, stride.x, stride.y, stride.z);

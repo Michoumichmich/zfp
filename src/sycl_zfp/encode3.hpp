@@ -16,19 +16,21 @@ namespace syclZFP {
                 for (x = 0; x < nx; x++, p += sx) {
                     q[16 * z + 4 * y + x] = *p;
                 }
-                pad_block(q + 16 * z + 4 * y, nx, 1);
+                pad_block<1>(q + 16 * z + 4 * y, nx);
             }
 #pragma unroll
             for (x = 0; x < 4; x++) {
-                pad_block(q + 16 * z + x, ny, 4);
+                pad_block<4>(q + 16 * z + x, ny);
             }
         }
 
 #pragma unroll
-        for (y = 0; y < 4; y++)
+        for (y = 0; y < 4; y++) {
 #pragma unroll
-                for (x = 0; x < 4; x++)
-                    pad_block(q + 4 * y + x, nz, 16);
+            for (x = 0; x < 4; x++) {
+                pad_block<16>(q + 4 * y + x, nz);
+            }
+        }
     }
 
     template<typename Scalar>

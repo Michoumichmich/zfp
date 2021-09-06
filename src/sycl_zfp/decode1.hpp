@@ -10,8 +10,9 @@ namespace syclZFP {
     template<typename Scalar>
     inline void scatter_partial1(const Scalar *q, Scalar *p, int nx, int sx) {
         int x;
-        for (x = 0; x < nx; x++, p += sx)
+        for (x = 0; x < nx; x++, p += sx) {
             *p = *q++;
+        }
     }
 
     template<typename Scalar>
@@ -20,8 +21,9 @@ namespace syclZFP {
     inline void scatter1(const Scalar *q, Scalar *p, int sx) {
         int x;
 #pragma unroll
-        for (x = 0; x < 4; x++, p += sx)
+        for (x = 0; x < 4; x++, p += sx) {
             *p = *q++;
+        }
     }
 
     template<class Scalar>
@@ -40,7 +42,9 @@ namespace syclZFP {
 
         const int intprec = get_precision<Scalar>();
 
-        if (block_idx >= total_blocks) return;
+        if (block_idx >= total_blocks) {
+            return;
+        }
 
         BlockReader<4> reader(blocks, maxbits, block_idx, total_blocks);
         Scalar result[4] = {Scalar(0)};

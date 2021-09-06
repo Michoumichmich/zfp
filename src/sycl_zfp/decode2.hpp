@@ -10,19 +10,23 @@ namespace syclZFP {
     template<typename Scalar>
     inline void scatter_partial2(const Scalar *q, Scalar *p, int nx, int ny, int sx, int sy) {
         int x, y;
-        for (y = 0; y < ny; y++, p += sy - nx * sx, q += 4 - nx)
-            for (x = 0; x < nx; x++, p += sx, q++)
+        for (y = 0; y < ny; y++, p += sy - nx * sx, q += 4 - nx) {
+            for (x = 0; x < nx; x++, p += sx, q++) {
                 *p = *q;
+            }
+        }
     }
 
     template<typename Scalar>
     inline void scatter2(const Scalar *q, Scalar *p, int sx, int sy) {
         int x, y;
 #pragma unroll
-        for (y = 0; y < 4; y++, p += sy - 4 * sx)
+        for (y = 0; y < 4; y++, p += sy - 4 * sx) {
 #pragma unroll
-                for (x = 0; x < 4; x++, p += sx)
-                    *p = *q++;
+            for (x = 0; x < 4; x++, p += sx) {
+                *p = *q++;
+            }
+        }
     }
 
 

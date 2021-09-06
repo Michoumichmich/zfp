@@ -25,21 +25,21 @@ namespace syclZFP {
             return 0;
     }
 
-    template<typename Scalar>
-    inline void pad_block(Scalar *p, int n, int s) {
+    template<int s, typename Scalar>
+    inline void pad_block(Scalar *p, int n) {
         switch (n) {
             case 0:
                 p[0 * s] = 0;
-                /* FALLTHROUGH */
+                [[fallthrough]];
             case 1:
                 p[1 * s] = p[0 * s];
-                /* FALLTHROUGH */
+                [[fallthrough]];
             case 2:
                 p[2 * s] = p[1 * s];
-                /* FALLTHROUGH */
+                [[fallthrough]];
             case 3:
                 p[3 * s] = p[0 * s];
-                /* FALLTHROUGH */
+                [[fallthrough]];
             default:
                 break;
         }
