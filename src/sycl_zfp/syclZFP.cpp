@@ -323,11 +323,16 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
         // Reversible mode not supported on GPU
         return 0;
     }
-    sycl::queue q{sycl::gpu_selector{}};
 
-#ifdef VERBOSE_SYCL
+
+#ifdef SYCL_ZFP_RATE_PRINT
+    sycl::queue q{sycl::gpu_selector{}, sycl::property::queue::enable_profiling{}};
     std::cout << "Compressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
+#else
+    sycl::queue q{sycl::gpu_selector{}};
 #endif
+
+
     assert(q.get_device().has(sycl::aspect::usm_device_allocations));
 
     sycl::id<3> dims{field->nz, field->ny, field->nx};
@@ -439,11 +444,13 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
 }
 
 void sycl_decompress(zfp_stream *stream, zfp_field *field) {
-    sycl::queue q{sycl::gpu_selector{}};
-#ifdef VERBOSE_SYCL
-    std::cout << "Decompressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
-#endif
 
+#ifdef SYCL_ZFP_RATE_PRINT
+    sycl::queue q{sycl::gpu_selector{}, sycl::property::queue::enable_profiling{}};
+    std::cout << "Decompressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
+#else
+    sycl::queue q{sycl::gpu_selector{}};
+#endif
 
     assert(q.get_device().has(sycl::aspect::usm_device_allocations));
     sycl::id<3> dims{field->nz, field->ny, field->nx};

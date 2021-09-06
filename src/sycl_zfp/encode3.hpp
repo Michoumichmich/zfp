@@ -8,7 +8,6 @@ namespace syclZFP {
     template<class Scalar, bool variable_rate>
     class encode3_kernel;
 
-
     template<typename Scalar>
     inline void gather_partial3(Scalar *q, const Scalar *p, int nx, int ny, int nz, int sx, int sy, int sz) {
         int x, y, z;
@@ -46,20 +45,19 @@ namespace syclZFP {
 
     template<class Scalar, bool variable_rate>
     void syclEncode3(
-            const size_t block_idx,
-            const_perm_accessor acc,
-            const int minbits,
-            const int maxbits,
-            const int maxprec,
-            const int minexp,
+            const size_t &block_idx,
+            const const_perm_accessor &acc,
+            const int &minbits,
+            const int &maxbits,
+            const int &maxprec,
+            const int &minexp,
             const Scalar *scalars,
             Word *stream,
             ushort *block_bits,
-            const sycl::id<3> dims,
-            const int64_3_t stride,
-            const sycl::id<3> padded_dims,
-            const size_t tot_blocks
-            //sycl::stream os
+            const sycl::id<3> &dims,
+            const int64_3_t &stride,
+            const sycl::id<3> &padded_dims,
+            const size_t &tot_blocks
     ) {
 
         if (block_idx >= tot_blocks) {
@@ -89,16 +87,14 @@ namespace syclZFP {
             const uint nx = block[2] + 4 > dims[2] ? dims[2] - block[2] : 4;
             const uint ny = block[1] + 4 > dims[1] ? dims[1] - block[1] : 4;
             const uint nz = block[0] + 4 > dims[0] ? dims[0] - block[0] : 4;
-            //os << "Partial Block " << block_idx << " offset " << offset << " dims " << dims[0] << " " << dims[1] << " " << dims[2] << '\n' << sycl::flush;
             gather_partial3(fblock, scalars + offset, (int) nx, (int) ny, (int) nz, stride.x, stride.y, stride.z);
 
         } else {
-            //os << "Not partial Block " << block_idx << " offset " << offset << " dims " << dims[0] << " " << dims[1] << " " << dims[2] << '\n'<< sycl::flush;
             gather3(fblock, scalars + offset, stride.x, stride.y, stride.z);
         }
 
         int bits = zfp_encode_block<Scalar, ZFP_3D_BLOCK_SIZE>(acc, fblock, minbits, maxbits, maxprec, minexp, block_idx, stream);
-        if (variable_rate) {
+        if constexpr (variable_rate) {
             block_bits[block_idx] = bits;
         }
 
@@ -120,7 +116,7 @@ namespace syclZFP {
             const int maxprec,
             const int minexp) {
 
-        const int preferred_block_size = 128;
+        const int preferred_block_size = 256;
         sycl::range<3> block_size(1, 1, preferred_block_size);
 
         sycl::id<3> zfp_pad(dims[0], dims[1], dims[2]);
@@ -137,22 +133,14 @@ namespace syclZFP {
         }
 
         size_t total_blocks = block_pad + zfp_blocks;
-
         sycl::range<3> grid_size = calculate_global_work_size(q, total_blocks, preferred_block_size);
-
         size_t stream_bytes = calc_device_mem3d(zfp_pad, maxbits);
         //ensure we start with 0s
-        sycl::event init_e = q.memset(stream, 0, stream_bytes);
-
-#ifdef SYCL_ZFP_RATE_PRINT
-        auto before = std::chrono::steady_clock::now();
-#endif
+        q.memset(stream, 0, stream_bytes).wait();
         sycl::nd_range<3> kernel_parameters(grid_size * block_size, block_size);
         auto buf = get_perm_buffer<64>();
-        q.submit([&](sycl::handler &cgh) {
+        auto e = q.submit([&](sycl::handler &cgh) {
             auto acc = buf.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(cgh);
-            cgh.depends_on(init_e);
-            //sycl::stream os(10240, 2000, cgh);
             cgh.parallel_for<encode3_kernel<Scalar, variable_rate>>(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclEncode3<Scalar, variable_rate>
                         (item.get_global_linear_id(),
@@ -168,16 +156,15 @@ namespace syclZFP {
                          stride,
                          zfp_pad,
                          zfp_blocks
-                                //,os
                         );
-
             });
-        }).wait();
-
+        });
+        e.wait();
 
 #ifdef SYCL_ZFP_RATE_PRINT
-        auto after = std::chrono::steady_clock::now();
-        auto seconds = std::chrono::duration<double>(after - before).count();
+        double ns = e.template get_profiling_info<sycl::info::event_profiling::command_end>()
+                    - e.template get_profiling_info<sycl::info::event_profiling::command_start>();
+        auto seconds = ns / 1e9;
         double rate = (double(dims[2] * dims[1] * dims[0]) * sizeof(Scalar)) / seconds;
         rate /= 1024.;
         rate /= 1024.;

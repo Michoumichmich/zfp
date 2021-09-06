@@ -19,24 +19,25 @@ namespace syclZFP {
 
     template<typename Scalar>
     inline void gather1(Scalar *q, const Scalar *p, int sx) {
+#pragma unroll
         for (int x = 0; x < 4; x++, p += sx) { *q++ = *p; }
     }
 
     template<class Scalar, bool variable_rate>
     void syclEncode1(
-            sycl::nd_item<3> item,
-            const_perm_accessor acc,
+            const sycl::nd_item<3> &item,
+            const const_perm_accessor &acc,
             int minbits,
-            const int maxbits,
-            const int maxprec,
-            const int minexp,
+            const int &maxbits,
+            const int &maxprec,
+            const int &minexp,
             const Scalar *scalars,
             Word *stream,
             ushort *block_bits,
-            const size_t dim,
-            const int sx,
-            const size_t padded_dim,
-            const size_t tot_blocks) {
+            const size_t &dim,
+            const int &sx,
+            const size_t &padded_dim,
+            const size_t &tot_blocks) {
 
         const size_t block_idx = item.get_global_linear_id();
 
@@ -107,16 +108,12 @@ namespace syclZFP {
 
         size_t stream_bytes = calc_device_mem1d(zfp_pad, maxbits);
         // ensure we have zeros
-        sycl::event init_e = q.memset(stream, 0, stream_bytes);
+        q.memset(stream, 0, stream_bytes).wait();
 
-#ifdef SYCL_ZFP_RATE_PRINT
-        auto before = std::chrono::steady_clock::now();
-#endif
         sycl::nd_range<3> kernel_parameters(grid_size * block_size, block_size);
         auto buf = get_perm_buffer<4>();
-        q.submit([&](sycl::handler &cgh) {
+        auto e = q.submit([&](sycl::handler &cgh) {
             auto acc = buf.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(cgh);
-            cgh.depends_on(init_e);
             cgh.parallel_for<encode1_kernel<Scalar, variable_rate>>(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclEncode1<Scalar, variable_rate>
                         (item,
@@ -133,12 +130,13 @@ namespace syclZFP {
                          zfp_pad,
                          zfp_blocks);
             });
-        }).wait();
-
+        });
+        e.wait();
 
 #ifdef SYCL_ZFP_RATE_PRINT
-        auto after = std::chrono::steady_clock::now();
-        auto seconds = std::chrono::duration<double>(after - before).count();
+        double ns = e.template get_profiling_info<sycl::info::event_profiling::command_end>()
+                    - e.template get_profiling_info<sycl::info::event_profiling::command_start>();
+        auto seconds = ns / 1e9;
         double gb = (double(dim) * double(sizeof(Scalar))) / (1024. * 1024. * 1024.);
         double rate = gb / seconds;
         printf("Encode elapsed time: %.5f (s)\n", seconds);

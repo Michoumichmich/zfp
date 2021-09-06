@@ -167,34 +167,34 @@ namespace syclZFP {
 
 // map two's complement signed integer to negabinary unsigned integer
 
-    inline uint64_t int2uint(const int64_t x) {
+    static constexpr inline uint64_t int2uint(const int64_t &x) {
         return ((uint64_t) x + get_nbmask<uint64_t>() ^ get_nbmask<uint64_t>());
     }
 
-    inline uint32_t int2uint(const int32_t x) {
+    static constexpr inline uint32_t int2uint(const int32_t &x) {
         return ((uint32_t) x + get_nbmask<uint32_t>() ^ get_nbmask<uint32_t>());
     }
 
     template<typename Int, typename Scalar>
-    Scalar dequantize(const Int &x, int e);
+    inline Scalar dequantize(const Int &x, int e);
 
     template<>
-    double dequantize<int64_t, double>(const int64_t &x, int e) {
+    inline double dequantize<int64_t, double>(const int64_t &x, int e) {
         return LDEXP((double) x, e - (int) (CHAR_BIT * scalar_sizeof<double>() - 2));
     }
 
     template<>
-    float dequantize<int32_t, float>(const int32_t &x, int e) {
+    inline float dequantize<int32_t, float>(const int32_t &x, int e) {
         return LDEXP((float) x, e - (int) (CHAR_BIT * scalar_sizeof<float>() - 2));
     }
 
     template<>
-    int32_t dequantize<int32_t, int32_t>(const int32_t &x, int e) {
+    inline int32_t dequantize<int32_t, int32_t>(const int32_t &x, int e) {
         return 1;
     }
 
     template<>
-    int64_t dequantize<int64_t, int64_t>(const int64_t &x, int e) {
+    inline int64_t dequantize<int64_t, int64_t>(const int64_t &x, int e) {
         return 1;
     }
 

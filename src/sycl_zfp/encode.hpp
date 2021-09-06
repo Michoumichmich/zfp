@@ -142,7 +142,7 @@ namespace syclZFP {
     }
 
     template<typename Scalar, typename Int, int BlockSize>
-    void fwd_cast(Int *iblock, const Scalar *fblock, int emax) {
+    static inline void fwd_cast(Int *iblock, const Scalar *fblock, int emax) {
         Scalar s = quantize_factor(emax, Scalar());
 #pragma unroll
         for (int i = 0; i < BlockSize; ++i) {
@@ -156,8 +156,7 @@ namespace syclZFP {
     template<>
     struct transform<64> {
         template<typename Int>
-        void fwd_xform(Int *p) {
-
+        static inline void fwd_xform(Int *p) {
             int x, y, z;
             /* transform along x */
 #pragma unroll
@@ -210,10 +209,10 @@ namespace syclZFP {
     };
 
     template<typename Int, typename UInt, int BlockSize>
-    static inline void fwd_order(const_perm_accessor acc, UInt *ublock, const Int *iblock) {
+    static inline void fwd_order(const const_perm_accessor &acc, UInt *ublock, const Int *iblock) {
 #pragma unroll
         for (uint i = 0; i < BlockSize; ++i) {
-            ublock[i] = int2uint(iblock[(uint) acc[i]]);
+            ublock[i] = int2uint(iblock[acc[i]]);
         }
     }
 
@@ -225,7 +224,7 @@ namespace syclZFP {
         const int m_maxbits;
         Word *m_stream;
 
-        BlockWriter(Word *stream, const int &maxbits, const size_t block_idx)
+        BlockWriter(Word *stream, const int &maxbits, const size_t &block_idx)
                 : m_current_bit(0),
                   m_maxbits(maxbits),
                   m_stream(stream) {
@@ -250,8 +249,7 @@ namespace syclZFP {
             print_bits(m_stream[index], os);
         }
 
-
-        size_t write_bits(const uint64_t &bits, const int &n_bits) {
+        inline size_t write_bits(const uint64_t &bits, const int &n_bits) {
             const int wbits = sizeof(Word) * 8;
             int seg_start = (m_start_bit + m_current_bit) % wbits;
             int write_index = m_word_index + ((m_start_bit + m_current_bit) / wbits);
@@ -291,7 +289,7 @@ namespace syclZFP {
             return bits >> (Word) n_bits;
         }
 
-        uint write_bit(const unsigned int &bit) {
+        inline uint write_bit(const unsigned int &bit) {
             const int wbits = sizeof(Word) * 8;
             int seg_start = (m_start_bit + m_current_bit) % wbits;
             int write_index = m_word_index + ((m_start_bit + m_current_bit) / wbits);
@@ -318,7 +316,7 @@ namespace syclZFP {
     };
 
     template<typename Int, int BlockSize>
-    int inline encode_block(const_perm_accessor acc, BlockWriter<BlockSize> &stream, int maxbits, int maxprec, Int *iblock) {
+    int inline encode_block(const const_perm_accessor &acc, BlockWriter<BlockSize> &stream, int maxbits, int maxprec, Int *iblock) {
         // perform decorrelating transform
         transform<BlockSize> tform;
         tform.fwd_xform(iblock);
@@ -360,7 +358,7 @@ namespace syclZFP {
 
     template<typename Scalar, int BlockSize>
     int inline zfp_encode_block(
-            const_perm_accessor acc,
+            const const_perm_accessor &acc,
             Scalar *fblock,
             const int minbits,
             const int maxbits,
@@ -388,7 +386,7 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int32_t, 64>(
-            const_perm_accessor acc,
+            const const_perm_accessor &acc,
             int32_t *fblock,
             const int minbits,
             const int maxbits,
@@ -405,7 +403,7 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int64_t, 64>(
-            const_perm_accessor acc,
+            const const_perm_accessor &acc,
             int64_t *fblock,
             const int minbits,
             const int maxbits,
@@ -422,7 +420,7 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int32_t, 16>(
-            const_perm_accessor acc,
+            const const_perm_accessor &acc,
             int32_t *fblock,
             const int minbits,
             const int maxbits,
@@ -438,7 +436,7 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int64_t, 16>(
-            const_perm_accessor acc,
+            const const_perm_accessor &acc,
             int64_t *fblock,
             const int minbits,
             const int maxbits,
@@ -454,7 +452,7 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int32_t, 4>(
-            const_perm_accessor acc,
+            const const_perm_accessor &acc,
             int32_t *fblock,
             const int minbits,
             const int maxbits,
@@ -470,7 +468,7 @@ namespace syclZFP {
 
     template<>
     int inline zfp_encode_block<int64_t, 4>(
-            const_perm_accessor acc,
+            const const_perm_accessor &acc,
             int64_t *fblock,
             const int minbits,
             const int maxbits,

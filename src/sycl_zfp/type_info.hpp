@@ -138,13 +138,13 @@ namespace syclZFP {
 
 
     template<typename T>
-    inline T get_nbmask();
+    constexpr inline T get_nbmask();
 
     template<>
-    inline uint32_t get_nbmask<uint32_t>() { return 0xaaaaaaaau; }
+    constexpr inline uint32_t get_nbmask<uint32_t>() { return 0xaaaaaaaau; }
 
     template<>
-    inline uint64_t get_nbmask<uint64_t>() { return 0xaaaaaaaaaaaaaaaaull; }
+    constexpr inline uint64_t get_nbmask<uint64_t>() { return 0xaaaaaaaaaaaaaaaaull; }
 
 
 }
