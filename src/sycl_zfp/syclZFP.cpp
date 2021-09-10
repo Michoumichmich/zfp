@@ -14,7 +14,7 @@
 #include "shared.h"
 
 
-//#define HAS_VARIABLE
+#define HAS_VARIABLE
 #ifdef HAS_VARIABLE
 
 #include "variable.hpp"
@@ -318,12 +318,10 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
         return 0;
 #endif
 
-
     if (zfp_stream_compression_mode(stream) == zfp_mode_reversible) {
         // Reversible mode not supported on GPU
         return 0;
     }
-
 
 #ifdef SYCL_ZFP_RATE_PRINT
     sycl::queue q{sycl::gpu_selector{}, sycl::property::queue::enable_profiling{}};
@@ -389,12 +387,15 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
         uint chunk_size = num_sm * 1024;
         auto d_offsets = sycl::malloc_device<uint64_t>(chunk_size + 1, q);
         auto offsets_out = sycl::malloc_device<uint64_t>(chunk_size + 1, q);
+        q.fill(d_offsets, 0, chunk_size + 1);
+        q.fill(offsets_out, 0, chunk_size + 1);
+        q.wait();
 
         size_t blocks = zfp_field_num_blocks(field);
 
         for (size_t i = 0; i < blocks; i += chunk_size) {
             using namespace parallel_primitives;
-            int cur_blocks = chunk_size;
+            uint cur_blocks = chunk_size;
             bool last_chunk = false;
             if (i + chunk_size > blocks) {
                 cur_blocks = (blocks - i);

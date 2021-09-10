@@ -11,7 +11,7 @@ namespace syclZFP {
      * Copy a chunk of 16-bit stream lengths into the 64-bit offsets array
      * to compute prefix sums. The first value in offsets is the "base" of the prefix sum
      */
-    void copy_length(size_t index, const ushort *length, size_t *offsets, size_t first_stream, int nstreams_chunk) {
+    void copy_length(size_t index, const ushort *length, size_t *offsets, size_t first_stream, uint nstreams_chunk) {
         if (index >= nstreams_chunk) {
             return;
         }
@@ -20,7 +20,7 @@ namespace syclZFP {
 
     class copy_length_launch_kernel;
 
-    void copy_length_launch(sycl::queue &q, ushort *bitlengths, size_t *chunk_offsets, size_t first, int nstreams_chunk) {
+    void copy_length_launch(sycl::queue &q, ushort *bitlengths, size_t *chunk_offsets, size_t first, uint nstreams_chunk) {
         size_t work_group_count = (nstreams_chunk - 1) / 1024 + 1;
         size_t work_group_size = 1024;
         auto kernel_range = sycl::nd_range<1>(sycl::range<1>(work_group_count * work_group_size), sycl::range<1>(work_group_size));
@@ -36,7 +36,7 @@ namespace syclZFP {
     // so the data is aligned on the fly (first bit of the bitstream on bit 0 in shared memory)
     template<uint tile_size>
     inline void load_to_shared(
-            sycl::nd_item<2> item,
+            const sycl::nd_item<2> &item,
             const uint *streams,                     // Input data
             uint *sm,                                // Shared memory
             const size_t &offset_bits,               // Offset in bits for the stream
@@ -62,7 +62,7 @@ namespace syclZFP {
     // for the first and last elements
     template<int tile_size, int num_tiles>
     inline void process(
-            sycl::nd_item<2> item,
+            const sycl::nd_item<2> &item,
             bool valid_stream,
             size_t &offset0,     // Offset in bits of the first bitstream of the block
             const size_t offset, // Offset in bits for this stream
@@ -143,15 +143,19 @@ namespace syclZFP {
                 output[offset0 + i] = value;
             else {
                 uint assumed, old = output[offset0 + i];
+                ATOMIC_REF_NAMESPACE::atomic_ref<uint,
+                        ATOMIC_REF_NAMESPACE::memory_order::relaxed,
+                        ATOMIC_REF_NAMESPACE::memory_scope::work_group,
+#ifdef SYCL_IMPLEMENTATION_ONEAPI
+                        sycl::access::address_space::ext_intel_global_device_space
+#else
+                        sycl::access::address_space::global_device_space
+#endif
+                > ref(output[offset0 + i]);
                 do {
                     assumed = old;
-                    auto addr = output + offset0 + i;
-                    ATOMIC_REF_NAMESPACE::atomic_ref<uint,
-                            ATOMIC_REF_NAMESPACE::memory_order::relaxed,
-                            ATOMIC_REF_NAMESPACE::memory_scope::work_group,
-                            sycl::access::address_space::global_device_space>
-                            ref(*addr);
-                    old = ref.compare_exchange_strong(assumed, (assumed & ~mask) + (value & mask));
+                    old = assumed;
+                    ref.compare_exchange_strong(old, (assumed & ~mask) + (value & mask));
                 } while (assumed != old);
             }
         }
@@ -171,7 +175,7 @@ namespace syclZFP {
     //   __launch_bounds__(tile_size *num_tiles)
     template<int tile_size, int num_tiles>
     void concat_bitstreams_chunk(
-            sycl::nd_item<2> item,
+            const sycl::nd_item<2> &item,
             nd_range_barrier<2> *grid_barrier,
             uint *__restrict__ streams,
             size_t *__restrict__ offsets,
@@ -184,7 +188,7 @@ namespace syclZFP {
             uint *sm_length) {
 
         uint *sm_out = sm_in + num_tiles * maxpad32;
-        size_t tid = item.get_local_id(0) * tile_size + item.get_local_id(1);
+        size_t tid = item.get_local_linear_id();
         size_t grid_stride = item.get_group_range(1) * num_tiles;
         size_t first_bitstream_block = item.get_group(1) * num_tiles;
         size_t my_stream = first_bitstream_block + item.get_local_id(0);
