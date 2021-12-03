@@ -8,21 +8,13 @@
 
 typedef uint64_t Word;
 
-using const_perm_accessor = sycl::accessor<uchar, 1, sycl::access::mode::read, sycl::access::target::constant_buffer>;
-
 #define Wsize ((uint)(CHAR_BIT * sizeof(Word)))
 
 #define MAX(x, y) (sycl::max((x), (y)))
 #define MIN(x, y) (sycl::min((x),(y)))
 #define bitsize(x) ((uint)(CHAR_BIT * sizeof(x)))
 
-#ifdef USING_DPCPP
-#define ATOMIC_REF_NAMESPACE sycl::ext::oneapi
-#else
-#define ATOMIC_REF_NAMESPACE sycl
-#endif
-
-#ifdef USING_DPCPP
+#ifdef SYCL_IMPLEMENTATION_ONEAPI
 #define LDEXP(x, y) sycl::ldexp((x),(y))
 #define FREXP(x, y) sycl::frexp((x),(y))
 #else

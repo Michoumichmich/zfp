@@ -14,7 +14,7 @@
 #include "shared.h"
 
 
-#define HAS_VARIABLE
+//#define HAS_VARIABLE
 #ifdef HAS_VARIABLE
 
 #include "variable.hpp"
@@ -324,10 +324,10 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
     }
 
 #ifdef SYCL_ZFP_RATE_PRINT
-    sycl::queue q{sycl::gpu_selector{}, sycl::property::queue::enable_profiling{}};
+    sycl::queue q{sycl::default_selector{}, sycl::property::queue::enable_profiling{}};
     std::cout << "Compressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
 #else
-    sycl::queue q{sycl::gpu_selector{}};
+    sycl::queue q{sycl::default_selector{}};
 #endif
 
 
@@ -447,10 +447,10 @@ size_t sycl_compress(zfp_stream *stream, const zfp_field *field, int variable_ra
 void sycl_decompress(zfp_stream *stream, zfp_field *field) {
 
 #ifdef SYCL_ZFP_RATE_PRINT
-    sycl::queue q{sycl::gpu_selector{}, sycl::property::queue::enable_profiling{}};
+    sycl::queue q{sycl::default_selector{}, sycl::property::queue::enable_profiling{}};
     std::cout << "Decompressing on: " << q.get_device().get_info<sycl::info::device::name>() << '\n';
 #else
-    sycl::queue q{sycl::gpu_selector{}};
+    sycl::queue q{sycl::default_selector{}};
 #endif
 
     assert(q.get_device().has(sycl::aspect::usm_device_allocations));

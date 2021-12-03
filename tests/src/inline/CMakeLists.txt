@@ -1,4 +1,5 @@
 add_executable(testBitstream testBitstream.c)
+add_dependencies(testBitstream cmocka_cloned)
 target_link_libraries(testBitstream cmocka zfp)
 add_test(NAME testBitstream COMMAND testBitstream)
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "shared.h"
-#include <algorithm>
+//#include <algorithm>
 
 namespace syclZFP {
 
@@ -184,7 +184,6 @@ namespace syclZFP {
     struct transform<16> {
         template<typename Int>
         static inline void fwd_xform(Int *p) {
-
             int x, y;
             /* transform along x */
 #pragma unroll
@@ -232,6 +231,8 @@ namespace syclZFP {
         const int m_maxbits;
         Word *m_stream;
 
+        using atomic_ref_t = sycl::atomic_ref<Word, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::global_space>;
+
         BlockWriter(Word *stream, const int &maxbits, const size_t &block_idx)
                 : m_current_bit(0),
                   m_maxbits(maxbits),
@@ -272,12 +273,7 @@ namespace syclZFP {
 
             Word b = bits - left;
             Word add = b << shift;
-            ATOMIC_REF_NAMESPACE::atomic_ref<
-                    Word,
-                    ATOMIC_REF_NAMESPACE::memory_order::relaxed,
-                    ATOMIC_REF_NAMESPACE::memory_scope::work_group,
-                    sycl::access::address_space::global_device_space>
-                    ref(m_stream[write_index]);
+            atomic_ref_t ref(m_stream[write_index]);
             ref += add;
 
             // n_bits straddles the word boundary
@@ -285,12 +281,7 @@ namespace syclZFP {
 
             if (straddle) {
                 Word rem = b >> (sizeof(Word) * 8 - (uint) shift);
-                ATOMIC_REF_NAMESPACE::atomic_ref<
-                        Word,
-                        ATOMIC_REF_NAMESPACE::memory_order::relaxed,
-                        ATOMIC_REF_NAMESPACE::memory_scope::work_group,
-                        sycl::access::address_space::global_device_space>
-                        ref_next(m_stream[write_index + 1]);
+                atomic_ref_t ref_next(m_stream[write_index + 1]);
                 ref_next += rem;
             }
             m_current_bit += n_bits;
@@ -309,12 +300,7 @@ namespace syclZFP {
             // uint zero_shift = sizeof(Word) * 8 - n_bits;
 
             Word add = (Word) bit << shift;
-            ATOMIC_REF_NAMESPACE::atomic_ref<
-                    Word,
-                    ATOMIC_REF_NAMESPACE::memory_order::relaxed,
-                    ATOMIC_REF_NAMESPACE::memory_scope::work_group,
-                    sycl::access::address_space::global_device_space>
-                    ref(m_stream[write_index]);
+            atomic_ref_t ref(m_stream[write_index]);
             ref += add;
             m_current_bit += 1;
 

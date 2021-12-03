@@ -118,17 +118,12 @@ namespace syclZFP {
         }
 
         size_t total_blocks = block_pad + zfp_blocks;
-
         sycl::range<3> grid_size = calculate_global_work_size(q, total_blocks, preferred_block_size);
-
         size_t stream_bytes = calc_device_mem2d(zfp_pad, maxbits);
         // ensure we have zeros
         q.memset(stream, 0, stream_bytes).wait();
-
         sycl::nd_range<3> kernel_parameters(grid_size * block_size, block_size);
-
         auto e = q.submit([&](sycl::handler &cgh) {
-
             cgh.parallel_for<encode2_kernel<Scalar, variable_rate>>(kernel_parameters, [=](sycl::nd_item<3> item) {
                 syclEncode2<Scalar, variable_rate>
                         (item.get_global_linear_id(),

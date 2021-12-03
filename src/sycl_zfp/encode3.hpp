@@ -5,19 +5,6 @@
 
 namespace syclZFP {
 
-    template<typename T>
-    void static inline prefetch(const T *ptr) {
-#if defined (__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
-        if constexpr (sizeof(ptr) == 8) {
-            asm("prefetch.L1 [%0];" :  : "l"(ptr));
-        } else {
-            asm("prefetch.L1 [%0];" :  : "r"(ptr));
-        }
-#else
-        (void) ptr;
-#endif
-    }
-
 
     template<class Scalar, bool variable_rate>
     class encode3_kernel;
