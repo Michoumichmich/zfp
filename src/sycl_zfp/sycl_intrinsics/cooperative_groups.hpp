@@ -23,14 +23,6 @@
 #include <numeric>
 
 
-#ifndef ATOMIC_REF_NAMESPACE
-#ifdef USING_DPCPP
-#define ATOMIC_REF_NAMESPACE sycl::ext::oneapi
-#else
-#define ATOMIC_REF_NAMESPACE sycl
-#endif
-#endif
-
 template<int dim>
 class nd_range_barrier {
 private:
@@ -132,10 +124,10 @@ public:
         this_item.barrier(sycl::access::fence_space::local_space);
         /* Choosing one work item to perform the work */
         if (this_item.get_local_linear_id() == 0) {
-            using atomic_ref_t = ATOMIC_REF_NAMESPACE::atomic_ref<
+            using atomic_ref_t = sycl::atomic_ref<
                     mask_t,
-                    ATOMIC_REF_NAMESPACE::memory_order::relaxed, // TODO acq_rel
-                    ATOMIC_REF_NAMESPACE::memory_scope::device,
+                    sycl::memory_order::relaxed, // TODO acq_rel
+                    sycl::memory_scope::device,
                     sycl::access::address_space::global_space
             >;
             atomic_ref_t groups_waiting_ref(groups_waiting_);

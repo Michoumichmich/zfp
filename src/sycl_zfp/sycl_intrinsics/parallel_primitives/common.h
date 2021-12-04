@@ -38,19 +38,19 @@ namespace parallel_primitives {
     constexpr static inline T get_init() {
         if constexpr(std::is_same_v<func, sycl::plus<>> && std::is_arithmetic_v<T>) {
             return T{};
-        } else if constexpr (std::is_same_v<func, sycl::multiplies<>>) {
+        } else if constexpr(std::is_same_v<func, sycl::multiplies<>>) {
             return T{1};
         } else if constexpr((std::is_same_v<func, sycl::bit_or<>> || std::is_same_v<func, sycl::bit_xor<>>) && std::is_unsigned_v<T>) {
             return T{};
-        } else if constexpr (std::is_same_v<func, sycl::bit_and<>> && std::is_unsigned_v<T>) {
+        } else if constexpr(std::is_same_v<func, sycl::bit_and<>> && std::is_unsigned_v<T>) {
             return ~T{};
-        } else if constexpr (std::is_same_v<func, sycl::minimum<>> && std::is_floating_point_v<T> && std::numeric_limits<T>::has_infinity()) {
+        } else if constexpr(std::is_same_v<func, sycl::minimum<>> && std::is_floating_point_v<T> && std::numeric_limits<T>::has_infinity()) {
             return std::numeric_limits<T>::infinity(); // +INF only for floating point that has infinity
-        } else if constexpr (std::is_same_v<func, sycl::minimum<>> && !std::numeric_limits<T>::has_infinity()) {
+        } else if constexpr(std::is_same_v<func, sycl::minimum<>> && !std::numeric_limits<T>::has_infinity()) {
             return std::numeric_limits<T>::max();
-        } else if constexpr (std::is_same_v<func, sycl::maximum<>> && std::is_floating_point_v<T> && std::numeric_limits<T>::has_infinity()) {
+        } else if constexpr(std::is_same_v<func, sycl::maximum<>> && std::is_floating_point_v<T> && std::numeric_limits<T>::has_infinity()) {
             return -std::numeric_limits<T>::infinity(); // -INF only for floating point that has infinity
-        } else if constexpr (std::is_same_v<func, sycl::maximum<>>) {
+        } else if constexpr(std::is_same_v<func, sycl::maximum<>>) {
             return std::numeric_limits<T>::lowest();
         } else {
             fail_to_compile<T, func>();

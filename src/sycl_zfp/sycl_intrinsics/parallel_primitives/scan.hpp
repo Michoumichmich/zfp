@@ -13,8 +13,10 @@
 using index_t = uint64_t;
 
 
-constexpr index_t THREADS_PER_BLOCK = 512;
-constexpr index_t ELEMENTS_PER_BLOCK = THREADS_PER_BLOCK * 2;
+constexpr index_t
+        THREADS_PER_BLOCK = 512;
+constexpr index_t
+        ELEMENTS_PER_BLOCK = THREADS_PER_BLOCK * 2;
 
 namespace parallel_primitives {
 
@@ -183,7 +185,7 @@ namespace parallel_primitives {
         index_t alloc_length = length;
         index_t offset = 0;
 
-        if constexpr (type == scan_type::inclusive) {
+        if constexpr(type == scan_type::inclusive) {
             alloc_length = length + 1;
             offset = 1;
         }

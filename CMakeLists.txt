@@ -186,7 +186,7 @@ if(ZFP_WITH_SYCL)
   set(DPCPP_FLAGS -fsycl -fsycl-targets=spir64_x86_64,nvptx64-nvidia-cuda -Xcuda-ptxas -v -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75)
   set(WARNING_FLAGS "-Wall -Wextra -Wshadow -Wdouble-promotion -fno-common -Winit-self -Wuninitialized -Wmissing-declarations -Woverloaded-virtual")
   set(EXTRA_W_FLAGS "-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-declarations -Wmissing-include-dirs  -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-overflow=5") #-Wnoexcept -Wold-style-cast -Wstrict-null-sentinel -switch-default -Wlogical-op
-  set(DISABLED_WARNINGS "-Wno-c++20-extensions -Wno-undef -Wno-unused -Wno-unused-parameter")
+  set(DISABLED_WARNINGS "-Wno-c++20-extensions -Wno-undef -Wno-unused -Wno-unused-parameter -Wno-linker-warnings")
   set(OPT_FLAGS "-march=native -mtune=native -O3 -fomit-frame-pointer")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${OPT_FLAGS} ${DISABLED_WARNINGS}")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${WARNING_FLAGS} ${EXTRA_W_FLAGS} ${DISABLED_WARNINGS} -g -Og -Wno-pass-failed")

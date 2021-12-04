@@ -1,8 +1,8 @@
 #pragma once
 
-#include <intrinsics.hpp>
-#include <cooperative_groups.hpp>
-#include <parallel_primitives/scan_cooperative.hpp>
+#include "sycl_intrinsics/intrinsics.hpp"
+#include "sycl_intrinsics/cooperative_groups.hpp"
+#include "sycl_intrinsics/parallel_primitives/scan_cooperative.hpp"
 #include "shared.h"
 
 namespace syclZFP {
@@ -99,7 +99,7 @@ namespace syclZFP {
                     mask &= ~(0xffffffff << ((misaligned + length_bits) & 31));
                 }
                 auto addr = sm_out + off_smout + i;
-                ATOMIC_REF_NAMESPACE::atomic_ref<uint, ATOMIC_REF_NAMESPACE::memory_order::relaxed, ATOMIC_REF_NAMESPACE::memory_scope::work_group, sycl::access::address_space::local_space> ref(*addr);
+                sycl::atomic_ref<uint, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::local_space> ref(*addr);
                 ref += v1 & mask;
             }
         }
@@ -143,9 +143,9 @@ namespace syclZFP {
                 output[offset0 + i] = value;
             else {
                 uint assumed, old = output[offset0 + i];
-                ATOMIC_REF_NAMESPACE::atomic_ref<uint,
-                        ATOMIC_REF_NAMESPACE::memory_order::relaxed,
-                        ATOMIC_REF_NAMESPACE::memory_scope::work_group,
+                sycl::atomic_ref<uint,
+                        sycl::memory_order::relaxed,
+                        sycl::memory_scope::work_group,
 #ifdef SYCL_IMPLEMENTATION_ONEAPI
                         sycl::access::address_space::ext_intel_global_device_space
 #else
@@ -216,7 +216,7 @@ namespace syclZFP {
                 offset = offsets[my_stream + i];
                 size_t offset_bits = (first_stream_chunk + my_stream + i) * maxbits;
                 size_t next_offset_bits = offsets[my_stream + i + 1];
-                length_bits = (uint) (next_offset_bits - offset);
+                length_bits = (uint)(next_offset_bits - offset);
                 load_to_shared<tile_size>(item, streams, sm_in, offset_bits, length_bits, maxpad32);
                 if (last_chunk && (my_stream + i == nstreams_chunk - 1)) {
                     uint partial = next_offset_bits & 63;
@@ -304,20 +304,28 @@ namespace syclZFP {
         // and potential zero-padding to the next multiple of 64 bits.
         // Block sizes set so that the shared memory stays < 48 KiB.
         if (nbitsmax <= 352) {
-            constexpr size_t tile_size = 1;
-            constexpr size_t num_tiles = 512;
+            constexpr
+            size_t tile_size = 1;
+            constexpr
+            size_t num_tiles = 512;
             dispatch_chunk_kernel<tile_size, num_tiles>(q, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, num_sm);
         } else if (nbitsmax <= 1504) {
-            constexpr size_t tile_size = 4;
-            constexpr size_t num_tiles = 128;
+            constexpr
+            size_t tile_size = 4;
+            constexpr
+            size_t num_tiles = 128;
             dispatch_chunk_kernel<tile_size, num_tiles>(q, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, num_sm);
         } else if (nbitsmax <= 6112) {
-            constexpr size_t tile_size = 16;
-            constexpr size_t num_tiles = 32;
+            constexpr
+            size_t tile_size = 16;
+            constexpr
+            size_t num_tiles = 32;
             dispatch_chunk_kernel<tile_size, num_tiles>(q, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, num_sm);
         } else {
-            constexpr size_t tile_size = 64;
-            constexpr size_t num_tiles = 8;
+            constexpr
+            size_t tile_size = 64;
+            constexpr
+            size_t num_tiles = 8;
             dispatch_chunk_kernel<tile_size, num_tiles>(q, streams, chunk_offsets, first, nstream_chunk, last_chunk, nbitsmax, num_sm);
         }
     }

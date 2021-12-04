@@ -21,8 +21,4 @@ set(syclZFP_sources
 
 set(syclZFP_headers
         shared.h
-        syclZFP.h
-        )
-
-add_library(syclZFP_static_lib STATIC ${syclZFP_sources} ${syclZFP_headers})
-add_sycl_to_target(TARGET syclZFP_static_lib SOURCES syclZFP.cpp)
+        syclZFP.h)
